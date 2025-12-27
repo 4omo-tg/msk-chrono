@@ -40,3 +40,16 @@ async def create_route(request: Request):
 @router.get("/routes/{route_id}", response_class=HTMLResponse)
 async def edit_route(request: Request, route_id: int):
     return templates.TemplateResponse("route_form.html", {"request": request})
+
+# Quizzes
+@router.get("/quizzes", response_class=HTMLResponse)
+async def list_quizzes(request: Request):
+    return templates.TemplateResponse("quizzes.html", {"request": request})
+
+@router.get("/quizzes/new", response_class=HTMLResponse)
+async def create_quiz(request: Request):
+    return templates.TemplateResponse("quiz_form.html", {"request": request})
+
+@router.get("/quizzes/{quiz_id}", response_class=HTMLResponse)
+async def edit_quiz(request: Request, quiz_id: int):
+    return templates.TemplateResponse("quiz_form.html", {"request": request})

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<a href="/admin/">&larr; Dashboard</a>
+<h1>Quizzes</h1>
+<a href="/admin/quizzes/new"
+    style="display:inline-block; padding:10px; background:#28a745; color:#fff; border-radius:5px; text-decoration:none; margin-bottom:20px">+
+    New Quiz</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>POI</th>
+            <th>Question</th>
+            <th>XP Reward</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="quizTable"></tbody>
+</table>
+
+<script>
+    async function load() {
+        const res = await api('/api/v1/quizzes/');
+        const quizzes = await res.json();
+        const tbody = document.getElementById('quizTable');
+        tbody.innerHTML = quizzes.map(q => `
+            <tr>
+                <td>${q.id}</td>
+                <td>POI #${q.poi_id}</td>
+                <td>${q.question.substring(0, 50)}...</td>
+                <td>${q.xp_reward} XP</td>
+                <td>
+                    <a href="/admin/quizzes/${q.id}">Edit</a> | 
+                    <a href="#" onclick="del(${q.id}); return false;">Delete</a>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function del(id) {
+        if (!confirm('Delete quiz?')) return;
+        await api('/api/v1/quizzes/' + id, { method: 'DELETE' });
+        load();
+    }
+
+    document.addEventListener('DOMContentLoaded', load);
+</script>
+{% endblock %}

@@ -2,6 +2,7 @@
     import { push } from "svelte-spa-router";
     import { onMount } from "svelte";
     import Map from "../components/Map.svelte";
+    import QuizModal from "../components/QuizModal.svelte";
     import {
         User,
         LogOut,
@@ -13,12 +14,18 @@
 
     let selectedPOI: any = null;
     let userXP: number = 0;
+    let userLevel: number = 1;
     let activeRouteProgress: any = null;
     let showReward: boolean = false;
     let lastReward: number = 0;
     let loading = true;
     let totalPoints = 0;
     let allRoutes: any[] = [];
+
+    // Quiz state
+    let showQuiz: boolean = false;
+    let currentQuizzes: any[] = [];
+    let currentQuizIndex: number = 0;
 
     onMount(async () => {
         const token = localStorage.getItem("token");
@@ -94,30 +101,99 @@
             if (response.ok) {
                 const result = await response.json();
                 userXP = result.new_total_xp;
-                activeRouteProgress = result.updated_progress;
+                userLevel = result.new_level;
                 lastReward = result.xp_gained;
                 showReward = true;
 
-                // Update selectedPOI state immediately to disable the button
-                if (selectedPOI) {
-                    selectedPOI = {
-                        ...selectedPOI,
-                        isVisited: true,
-                        isCurrent: false,
-                    };
+                // Force reload of progress to ensure consistency
+                const progressResponse = await fetch(
+                    "http://localhost:8000/api/v1/progress/current",
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    },
+                );
+
+                if (progressResponse.ok) {
+                    const freshProgress = await progressResponse.json();
+                    activeRouteProgress = freshProgress;
+                } else {
+                    // Fallback to response
+                    activeRouteProgress = { ...result.updated_progress };
                 }
+
+                console.log("After check-in:", {
+                    completed_points:
+                        activeRouteProgress?.completed_points_count,
+                    status: activeRouteProgress?.status,
+                });
 
                 if (activeRouteProgress.status === "completed") {
                     routeCompleted = true;
                     activeRouteProgress = null; // Clear active route immediately
-                    selectedPOI = null;
                 }
+
+                // Clear selectedPOI to allow selecting next POI
+                selectedPOI = null;
 
                 setTimeout(() => (showReward = false), 3000);
             }
         } catch (e) {
             console.error("Check-in failed", e);
         }
+    }
+
+    async function loadQuizzesForPOI(poiId: number) {
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(
+                `http://localhost:8000/api/v1/quizzes/poi/${poiId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (response.ok) {
+                currentQuizzes = await response.json();
+                if (currentQuizzes.length > 0) {
+                    currentQuizIndex = 0;
+                    showQuiz = true;
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load quizzes:", error);
+        }
+    }
+
+    function handleQuizComplete(event: CustomEvent) {
+        userXP = event.detail.newTotalXp;
+        userLevel = event.detail.newLevel;
+
+        // Show XP reward notification
+        lastReward = event.detail.xpEarned;
+        showReward = true;
+        setTimeout(() => {
+            showReward = false;
+        }, 2000);
+    }
+
+    function handleNextQuiz() {
+        if (currentQuizIndex < currentQuizzes.length - 1) {
+            currentQuizIndex++;
+        } else {
+            showQuiz = false;
+            currentQuizzes = [];
+            currentQuizIndex = 0;
+        }
+    }
+
+    function handleCloseQuiz() {
+        showQuiz = false;
+        currentQuizzes = [];
+        currentQuizIndex = 0;
     }
 
     function logout() {
@@ -127,6 +203,11 @@
 
     function handlePOISelection(event: CustomEvent) {
         selectedPOI = event.detail;
+
+        // Load quizzes for this POI immediately when selected
+        if (selectedPOI && selectedPOI.id) {
+            loadQuizzesForPOI(selectedPOI.id);
+        }
     }
 
     // Reactive totalPoints calculation - fetch route data when activeRouteProgress changes
@@ -460,3 +541,15 @@
         </div>
     {/if}
 </div>
+
+<!-- Quiz Modal -->
+{#if showQuiz && currentQuizzes.length > 0}
+    <QuizModal
+        currentQuiz={currentQuizzes[currentQuizIndex]}
+        quizIndex={currentQuizIndex}
+        totalQuizzes={currentQuizzes.length}
+        on:quizComplete={handleQuizComplete}
+        on:next={handleNextQuiz}
+        on:close={handleCloseQuiz}
+    />
+{/if}

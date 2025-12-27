@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<a href="/admin/quizzes">&larr; Back to Quizzes</a>
+<h1 id="header">Create Quiz</h1>
+<form id="quizForm">
+    <label>POI</label>
+    <select id="poi_id" required>
+        <option value="">Select POI...</option>
+    </select>
+
+    <label>Question</label>
+    <textarea id="question" rows="3" required></textarea>
+
+    <label>Option A</label>
+    <input type="text" id="option_a" required>
+
+    <label>Option B</label>
+    <input type="text" id="option_b" required>
+
+    <label>Option C</label>
+    <input type="text" id="option_c" required>
+
+    <label>Option D</label>
+    <input type="text" id="option_d" required>
+
+    <label>Correct Answer</label>
+    <select id="correct_answer" required>
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+    </select>
+
+    <label>XP Reward</label>
+    <input type="number" id="xp_reward" value="10" step="1" required>
+
+    <button type="submit">Save</button>
+</form>
+
+<script>
+    const id = window.location.pathname.split('/').pop();
+    const isEdit = !isNaN(id);
+    if (isEdit) document.getElementById('header').innerText = 'Edit Quiz ' + id;
+
+    async function loadPOIs() {
+        const res = await api('/api/v1/pois/');
+        const pois = await res.json();
+        const select = document.getElementById('poi_id');
+        pois.forEach(poi => {
+            const opt = document.createElement('option');
+            opt.value = poi.id;
+            opt.textContent = poi.title;
+            select.appendChild(opt);
+        });
+    }
+
+    async function load() {
+        await loadPOIs();
+        if (isEdit) {
+            const res = await api('/api/v1/quizzes/' + id);
+            const data = await res.json();
+            document.getElementById('poi_id').value = data.poi_id;
+            document.getElementById('question').value = data.question;
+            document.getElementById('option_a').value = data.option_a;
+            document.getElementById('option_b').value = data.option_b;
+            document.getElementById('option_c').value = data.option_c;
+            document.getElementById('option_d').value = data.option_d;
+            document.getElementById('correct_answer').value = data.correct_answer;
+            document.getElementById('xp_reward').value = data.xp_reward;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', load);
+
+    document.getElementById('quizForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const payload = {
+            poi_id: parseInt(document.getElementById('poi_id').value),
+            question: document.getElementById('question').value,
+            option_a: document.getElementById('option_a').value,
+            option_b: document.getElementById('option_b').value,
+            option_c: document.getElementById('option_c').value,
+            option_d: document.getElementById('option_d').value,
+            correct_answer: document.getElementById('correct_answer').value,
+            xp_reward: parseFloat(document.getElementById('xp_reward').value)
+        };
+
+        let res;
+        if (isEdit) {
+            res = await api('/api/v1/quizzes/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            res = await api('/api/v1/quizzes/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
+
+        if (res.ok) window.location.href = '/admin/quizzes';
+        else alert('Error saving');
+    };
+</script>
+{% endblock %}

@@ -3,3 +3,4 @@ from .user import User, UserCreate, UserInDB, UserUpdate
 from .poi import PointOfInterest, PointOfInterestCreate, PointOfInterestUpdate
 from .route import Route, RouteCreate, RouteUpdate
 from .progress import UserProgress, UserProgressCreate, UserProgressUpdate, CheckIn, CheckInResponse
+from .quiz import Quiz, QuizCreate, QuizUpdate, QuizPublic, QuizSubmit, QuizSubmitResponse, UserQuizProgress
