@@ -30,17 +30,17 @@
                         <a
                             href="#/routes"
                             class="hover:text-amber-400 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                            >Routes</a
+                            >Маршруты</a
                         >
                         <a
                             href="#/login"
                             class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-sm font-medium transition-all ml-4"
-                            >Login</a
+                            >Войти</a
                         >
                         <a
                             href="#/register"
                             class="bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-full text-sm font-medium transition-all"
-                            >Sign Up</a
+                            >Регистрация</a
                         >
                     </div>
                 </div>
@@ -62,16 +62,17 @@
                 <h1
                     class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6"
                 >
-                    <span class="block text-white">Explore History</span>
+                    <span class="block text-white">Исследуйте Историю</span>
                     <span
                         class="block bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent"
-                        >One Step at a Time</span
+                        >Шаг за Шагом</span
                     >
                 </h1>
                 <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-400 mb-10">
-                    Discover the hidden stories of Moscow. Compare historical
-                    photos with modern views, follow curated walking routes, and
-                    earn rewards as you explore.
+                    Откройте для себя скрытые истории Москвы. Сравнивайте
+                    исторические фотографии с современными видами, следуйте по
+                    тщательно разработанным пешеходным маршрутам и зарабатывайте
+                    награды, исследуя.
                 </p>
                 <div class="flex justify-center gap-4">
                     <!-- Using hash-based routing links automatically with svelte-spa-router if using proper a hrefs with # -->
@@ -79,13 +80,7 @@
                         href="#/register"
                         class="bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 px-8 rounded-full text-lg transition-transform hover:scale-105 shadow-lg shadow-amber-500/20"
                     >
-                        Start Exploring
-                    </a>
-                    <a
-                        href="#/routes"
-                        class="bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-8 rounded-full text-lg transition-all backdrop-blur-sm border border-white/10 inline-block"
-                    >
-                        View Routes
+                        Начать Исследование
                     </a>
                 </div>
             </div>

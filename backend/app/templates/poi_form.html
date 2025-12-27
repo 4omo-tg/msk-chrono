@@ -58,7 +58,11 @@
 
     function renderPreview(divId, url) {
         const div = document.getElementById(divId);
-        if (url) div.innerHTML = `<img src="${url}" style="max-height: 100px; margin-top: 5px;">`;
+        if (url) {
+            // Prepend base URL if it's a relative path
+            const fullUrl = url.startsWith('http') ? url : window.location.origin + url;
+            div.innerHTML = `<img src="${fullUrl}" style="max-height: 100px; margin-top: 5px; border: 1px solid #ccc;">`;
+        }
     }
 
     handleUpload('histFile', 'historic_image_url', 'histPreview');

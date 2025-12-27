@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
 {% block content %}
-<a href="/admin/routes">&larr; Back to List</a>
-<h1 id="header">Create Route</h1>
+<h1 id="header">New Route</h1>
+
 <form id="routeForm">
     <label>Title</label>
-    <input type="text" id="title" required>
+    <input type="text" id="title" required />
 
     <label>Description</label>
-    <textarea id="description" rows="3"></textarea>
+    <textarea id="description"></textarea>
 
     <label>Difficulty</label>
     <select id="difficulty">
@@ -18,13 +18,13 @@
     </select>
 
     <label>Reward XP</label>
-    <input type="number" id="reward_xp" value="100">
+    <input type="number" id="reward_xp" step="0.1" value="100" />
 
-    <label>Premium Route?</label>
-    <input type="checkbox" id="is_premium" style="width: auto;">
+    <label>Premium</label>
+    <input type="checkbox" id="is_premium" />
 
     <!-- POI Selection -->
-    <label style="margin-top:20px;">Points of Interest (Check to include)</label>
+    <label style="margin-top:20px;">Points of Interest (Отметьте в нужном порядке)</label>
     <div id="poiList" style="max-height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;"></div>
 
     <button type="submit">Save</button>
@@ -37,20 +37,78 @@
         document.getElementById('header').innerText = 'Edit Route ' + id;
     }
 
+    let selectedPOIs = []; // Track POI selection order
+
     async function loadPOIs(selectedIds = []) {
         const res = await api('/api/v1/pois/');
         const pois = await res.json();
         const container = document.getElementById('poiList');
         container.innerHTML = '';
 
+        // Initialize selectedPOIs in edit mode with existing order
+        if (selectedIds.length > 0) {
+            selectedPOIs = [...selectedIds];
+        }
+
         pois.forEach(poi => {
             const div = document.createElement('div');
-            const checked = selectedIds.includes(poi.id) ? 'checked' : '';
-            div.innerHTML = `
-                <input type="checkbox" value="${poi.id}" class="poi-check" style="width:auto; margin-right: 5px;" ${checked}>
-                <span>${poi.title} (ID: ${poi.id})</span>
-            `;
+            div.style.marginBottom = '8px';
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = poi.id;
+            checkbox.className = 'poi-check';
+            checkbox.style.width = 'auto';
+            checkbox.style.marginRight = '8px';
+            checkbox.checked = selectedIds.includes(poi.id);
+
+            // Track selection order on change
+            checkbox.addEventListener('change', function (e) {
+                const poiId = parseInt(e.target.value);
+                if (e.target.checked) {
+                    // Add to selection order if not already there
+                    if (!selectedPOIs.includes(poiId)) {
+                        selectedPOIs.push(poiId);
+                    }
+                } else {
+                    // Remove from selection order
+                    selectedPOIs = selectedPOIs.filter(id => id !== poiId);
+                }
+                updateOrderHints();
+            });
+
+            const label = document.createElement('span');
+            label.style.flex = '1';
+            label.textContent = poi.title + ' (ID: ' + poi.id + ')';
+
+            const orderHint = document.createElement('span');
+            orderHint.className = 'order-hint';
+            orderHint.style.fontSize = '0.9em';
+            orderHint.style.marginLeft = '8px';
+            orderHint.dataset.poiId = poi.id;
+
+            div.appendChild(checkbox);
+            div.appendChild(label);
+            div.appendChild(orderHint);
             container.appendChild(div);
+        });
+
+        updateOrderHints();
+    }
+
+    function updateOrderHints() {
+        document.querySelectorAll('.order-hint').forEach(hint => {
+            const poiId = parseInt(hint.dataset.poiId);
+            const index = selectedPOIs.indexOf(poiId);
+            if (index >= 0) {
+                hint.textContent = 'Порядок: ' + (index + 1);
+                hint.style.fontWeight = 'bold';
+                hint.style.color = '#28a745';
+            } else {
+                hint.textContent = '';
+            }
         });
     }
 
@@ -64,8 +122,6 @@
                 document.getElementById('difficulty').value = data.difficulty;
                 document.getElementById('reward_xp').value = data.reward_xp;
                 document.getElementById('is_premium').checked = data.is_premium;
-
-                // Extract POI IDs from response
                 const selectedIds = data.points.map(p => p.id);
                 await loadPOIs(selectedIds);
             }
@@ -73,14 +129,14 @@
             await loadPOIs();
         }
     }
-    load();
+
+    document.addEventListener('DOMContentLoaded', load);
 
     document.getElementById('routeForm').onsubmit = async (e) => {
         e.preventDefault();
 
-        // Get selected POIs
-        const checkedBoxes = document.querySelectorAll('.poi-check:checked');
-        const poiIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+        // Use selectedPOIs array which maintains selection order
+        const poiIds = selectedPOIs;
 
         const payload = {
             title: document.getElementById('title').value,

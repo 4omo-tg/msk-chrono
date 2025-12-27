@@ -33,6 +33,7 @@ async def upload_file(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not upload file: {e}")
 
-    # Return URL
-    # Assuming mounted at /static
-    return {"url": f"/static/{file_name}"}
+    # Return full URL with backend origin
+    # This ensures frontend can load images correctly from backend
+    backend_url = "http://localhost:8000"
+    return {"url": f"{backend_url}/static/{file_name}"}

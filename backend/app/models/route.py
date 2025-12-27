@@ -20,4 +20,9 @@ class Route(Base):
     is_premium = Column(Boolean, default=False)
     
     # Relationships
-    points = relationship("PointOfInterest", secondary=route_poi_association, backref="routes")
+    points = relationship(
+        "PointOfInterest", 
+        secondary=route_poi_association, 
+        backref="routes",
+        order_by=route_poi_association.c.order
+    )

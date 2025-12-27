@@ -12,7 +12,7 @@ class UserProgress(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("user.id"), index=True)
-    route_id = Column(Integer, ForeignKey("route.id"), index=True)
+    route_id = Column(Integer, ForeignKey("route.id", ondelete="CASCADE"), index=True)
     
     status = Column(String, default=RouteStatus.STARTED)
     completed_points_count = Column(Integer, default=0)

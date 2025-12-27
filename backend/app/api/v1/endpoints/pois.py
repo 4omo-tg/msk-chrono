@@ -1,35 +1,60 @@
-from typing import Any, List
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from geoalchemy2.shape import to_shape, from_shape
-from shapely.geometry import Point
+# from geoalchemy2.shape import to_shape, from_shape
+# from shapely.geometry import Point
 
 from app import models, schemas
 from app.api import deps
 
 router = APIRouter()
 
-@router.get("/")
-async def read_pois(db: AsyncSession = Depends(deps.get_db)) -> Any:
-    # Fallback to RAW SQL to avoid ORM/GeoAlchemy crashes in this environment
-    from sqlalchemy import text
-    result = await db.execute(text("SELECT id, title, description, historic_image_url, modern_image_url, ST_X(location::geometry) as lon, ST_Y(location::geometry) as lat FROM point_of_interest"))
-    rows = result.all()
+@router.get("/", response_model=List[schemas.PointOfInterest])
+async def read_pois(
+    db: AsyncSession = Depends(deps.get_db),
+    skip: int = 0,
+    limit: int = 100,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    radius: Optional[float] = 500, # meters
+) -> Any:
+    """
+    Retrieve POIs. Filter by nearby if lat/lon/radius provided.
+    """
+    query = select(models.PointOfInterest)
     
-    poi_list = []
-    for row in rows:
-        poi_list.append({
-            "id": row.id,
-            "title": row.title,
-            "description": row.description,
-            "historic_image_url": row.historic_image_url,
-            "modern_image_url": row.modern_image_url,
-            "latitude": row.lat,
-            "longitude": row.lon
-        })
-    return poi_list
+    # Simple bounding box or distance filtering for SQLite
+    # Since we lack PostGIS, we will just return all or do rough python-side filtering if list is small.
+    # For MVP with SQLite, let's just ignore precise radius or use rough degree approximation.
+    # 1 degree lat approx 111km. 500m is 0.0045 degrees.
+    if latitude is not None and longitude is not None:
+         # Rough bounding box (0.01 deg is ~1km)
+         delta = 0.01 
+         query = query.where(
+             models.PointOfInterest.latitude.between(latitude - delta, latitude + delta),
+             models.PointOfInterest.longitude.between(longitude - delta, longitude + delta)
+         )
+    
+    result = await db.execute(query.offset(skip).limit(limit))
+    pois = result.scalars().all()
+    
+    # We no longer need conversion helper since model has lat/lon
+    poi_schemas = []
+    for poi in pois:
+        poi_schemas.append(
+            schemas.PointOfInterest(
+                id=poi.id,
+                title=poi.title,
+                description=poi.description,
+                historic_image_url=poi.historic_image_url,
+                modern_image_url=poi.modern_image_url,
+                latitude=poi.latitude,
+                longitude=poi.longitude
+            )
+        )
+    return poi_schemas
 
 @router.post("/", response_model=schemas.PointOfInterest)
 async def create_poi(
@@ -41,23 +66,17 @@ async def create_poi(
     """
     Create new POI. Only superusers.
     """
-    # Create GIS point
-    # Note: geoalchemy2 handles WKT.
-    # WKT for Point is 'POINT(x y)' -> 'POINT(lon lat)'
-    wkt_location = f'POINT({poi_in.longitude} {poi_in.latitude})'
-    
     poi = models.PointOfInterest(
         title=poi_in.title,
         description=poi_in.description,
         historic_image_url=poi_in.historic_image_url,
         modern_image_url=poi_in.modern_image_url,
-        location=wkt_location 
+        latitude=poi_in.latitude,
+        longitude=poi_in.longitude
     )
     db.add(poi)
     await db.commit()
     await db.refresh(poi)
-    
-    point = to_shape(poi.location)
     
     return schemas.PointOfInterest(
         id=poi.id,
@@ -65,8 +84,8 @@ async def create_poi(
         description=poi.description,
         historic_image_url=poi.historic_image_url,
         modern_image_url=poi.modern_image_url,
-        latitude=point.y,
-        longitude=point.x
+        latitude=poi.latitude,
+        longitude=poi.longitude
     )
 
 @router.get("/{poi_id}", response_model=schemas.PointOfInterest)
@@ -82,16 +101,16 @@ async def read_poi(
     if not poi:
         raise HTTPException(status_code=404, detail="POI not found")
         
-    point = to_shape(poi.location)
     return schemas.PointOfInterest(
         id=poi.id,
         title=poi.title,
         description=poi.description,
         historic_image_url=poi.historic_image_url,
         modern_image_url=poi.modern_image_url,
-        latitude=point.y,
-        longitude=point.x
+        latitude=poi.latitude,
+        longitude=poi.longitude
     )
+
 @router.put("/{poi_id}", response_model=schemas.PointOfInterest)
 async def update_poi(
     *,
@@ -108,14 +127,8 @@ async def update_poi(
         raise HTTPException(status_code=404, detail="POI not found")
         
     update_data = poi_in.model_dump(exclude_unset=True)
-    if "latitude" in update_data and "longitude" in update_data:
-        wkt_location = f'POINT({update_data["longitude"]} {update_data["latitude"]})'
-        poi.location = wkt_location
-        del update_data["latitude"]
-        del update_data["longitude"]
-    elif "latitude" in update_data or "longitude" in update_data:
-         raise HTTPException(status_code=400, detail="Must provide both latitude and longitude to update location")
-
+    
+    # Direct update for lat/lon fields, no WKT needed
     for field, value in update_data.items():
         setattr(poi, field, value)
 
@@ -123,16 +136,14 @@ async def update_poi(
     await db.commit()
     await db.refresh(poi)
     
-    point = to_shape(poi.location)
-    
     return schemas.PointOfInterest(
         id=poi.id,
         title=poi.title,
         description=poi.description,
         historic_image_url=poi.historic_image_url,
         modern_image_url=poi.modern_image_url,
-        latitude=point.y,
-        longitude=point.x
+        latitude=poi.latitude,
+        longitude=poi.longitude
     )
 
 @router.delete("/{poi_id}", response_model=schemas.PointOfInterest)
@@ -149,17 +160,14 @@ async def delete_poi(
     if not poi:
         raise HTTPException(status_code=404, detail="POI not found")
         
-    # We need to return schema, so capture state before delete or just ID return?
-    # Schema requires all fields.
-    point = to_shape(poi.location)
     poi_schema = schemas.PointOfInterest(
         id=poi.id,
         title=poi.title,
         description=poi.description,
         historic_image_url=poi.historic_image_url,
         modern_image_url=poi.modern_image_url,
-        latitude=point.y,
-        longitude=point.x
+        latitude=poi.latitude,
+        longitude=poi.longitude
     )
     
     await db.delete(poi)

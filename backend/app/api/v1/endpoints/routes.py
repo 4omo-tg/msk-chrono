@@ -7,38 +7,56 @@ from sqlalchemy.orm import selectinload
 
 from app import models, schemas
 from app.api import deps
-from geoalchemy2.shape import to_shape
+# from geoalchemy2.shape import to_shape
 
 router = APIRouter()
 
-@router.get("/")
-async def read_routes(db: AsyncSession = Depends(deps.get_db)) -> Any:
-    from sqlalchemy import text
-    # Fetch routes
-    result_routes = await db.execute(text("SELECT id, title, description, difficulty, reward_xp, is_premium FROM route"))
-    routes_rows = result_routes.all()
+@router.get("/", response_model=List[schemas.Route])
+async def read_routes(
+    db: AsyncSession = Depends(deps.get_db),
+    skip: int = 0,
+    limit: int = 100,
+) -> Any:
+    """
+    Retrieve routes.
+    """
+    # Eager load points
+    result = await db.execute(
+        select(models.Route)
+        .options(selectinload(models.Route.points))
+        .offset(skip)
+        .limit(limit)
+    )
+    routes = result.scalars().all()
     
-    # Fetch all POIs (assoc)
-    # Simple N+1 or fetch all and map in memory for MVP/Fix.
-    # Let's just do a join or separate fetch.
-    # JOIN is better: route_id, poi fields...
-    # But for simplicity let's fetching POIs per route is seemingly heavy but safe for MVP admin list.
-    # Or just fetch all route_poi associations.
-    
+    # We need to map the POIs inside to schema POIs with lat/lon
     route_schemas = []
-    for r in routes_rows:
-        # Optimization: Admin list doesn't show points, so we can skip fetching them for the list view.
-        # This also avoids potential crashes with geometry serialization in the sub-query.
-        route_schemas.append({
-            "id": r.id,
-            "title": r.title,
-            "description": r.description,
-            "difficulty": r.difficulty,
-            "reward_xp": r.reward_xp,
-            "is_premium": r.is_premium,
-            "points": [] 
-        })
-        
+    for r in routes:
+        points_schema = []
+        for p in r.points:
+            points_schema.append(
+                 schemas.PointOfInterest(
+                    id=p.id,
+                    title=p.title,
+                    description=p.description,
+                    historic_image_url=p.historic_image_url,
+                    modern_image_url=p.modern_image_url,
+                    latitude=p.latitude,
+                    longitude=p.longitude
+                )
+            )
+            
+        route_schemas.append(
+            schemas.Route(
+                id=r.id,
+                title=r.title,
+                description=r.description,
+                difficulty=r.difficulty,
+                reward_xp=r.reward_xp,
+                is_premium=r.is_premium,
+                points=points_schema
+            )
+        )
     return route_schemas
 
 @router.post("/", response_model=schemas.Route)
@@ -59,22 +77,26 @@ async def create_route(
         is_premium=route_in.is_premium
     )
     
-    if route_in.poi_ids:
-        # Fetch POIs
-        result = await db.execute(select(models.PointOfInterest).where(models.PointOfInterest.id.in_(route_in.poi_ids)))
-        pois = result.scalars().all()
-        # Maintain order? For now, just add them. `in_` does not guarantee order.
-        # If strict order is needed, need to handle RoutePoint association manually or sort.
-        # For MVP we can assume simple association.
-        route.points = pois
-
+    # First add route to get an ID
     db.add(route)
+    await db.flush()  # Get route.id without committing
+    
+    if route_in.poi_ids:
+        # Manually insert into association table with order preserved
+        from sqlalchemy import insert
+        for idx, poi_id in enumerate(route_in.poi_ids):
+            stmt = insert(models.route_poi_association).values(
+                route_id=route.id,
+                poi_id=poi_id,
+                order=idx
+            )
+            await db.execute(stmt)
+
     await db.commit()
     await db.refresh(route, attribute_names=['points']) # refresh relationships
     
     points_schema = []
     for p in route.points:
-        pt = to_shape(p.location)
         points_schema.append(
              schemas.PointOfInterest(
                 id=p.id,
@@ -82,8 +104,8 @@ async def create_route(
                 description=p.description,
                 historic_image_url=p.historic_image_url,
                 modern_image_url=p.modern_image_url,
-                latitude=pt.y,
-                longitude=pt.x
+                latitude=p.latitude,
+                longitude=p.longitude
             )
         )
 
@@ -117,7 +139,6 @@ async def read_route(
 
     points_schema = []
     for p in route.points:
-        pt = to_shape(p.location)
         points_schema.append(
              schemas.PointOfInterest(
                 id=p.id,
@@ -125,8 +146,8 @@ async def read_route(
                 description=p.description,
                 historic_image_url=p.historic_image_url,
                 modern_image_url=p.modern_image_url,
-                latitude=pt.y,
-                longitude=pt.x
+                latitude=p.latitude,
+                longitude=p.longitude
             )
         )
 
@@ -139,6 +160,7 @@ async def read_route(
         is_premium=route.is_premium,
         points=points_schema
     )
+
 @router.put("/{route_id}", response_model=schemas.Route)
 async def update_route(
     *,
@@ -166,9 +188,21 @@ async def update_route(
     if "poi_ids" in update_data:
         poi_ids = update_data.pop("poi_ids")
         if poi_ids is not None:
-             result_pois = await db.execute(select(models.PointOfInterest).where(models.PointOfInterest.id.in_(poi_ids)))
-             pois = result_pois.scalars().all()
-             route.points = pois
+            # Delete existing associations
+            from sqlalchemy import delete, insert
+            delete_stmt = delete(models.route_poi_association).where(
+                models.route_poi_association.c.route_id == route_id
+            )
+            await db.execute(delete_stmt)
+            
+            # Insert new associations with order
+            for idx, poi_id in enumerate(poi_ids):
+                insert_stmt = insert(models.route_poi_association).values(
+                    route_id=route_id,
+                    poi_id=poi_id,
+                    order=idx
+                )
+                await db.execute(insert_stmt)
 
     for field, value in update_data.items():
         setattr(route, field, value)
@@ -179,7 +213,6 @@ async def update_route(
     
     points_schema = []
     for p in route.points:
-        pt = to_shape(p.location)
         points_schema.append(
              schemas.PointOfInterest(
                 id=p.id,
@@ -187,8 +220,8 @@ async def update_route(
                 description=p.description,
                 historic_image_url=p.historic_image_url,
                 modern_image_url=p.modern_image_url,
-                latitude=pt.y,
-                longitude=pt.x
+                latitude=p.latitude,
+                longitude=p.longitude
             )
         )
 
@@ -224,7 +257,6 @@ async def delete_route(
 
     points_schema = []
     for p in route.points:
-        pt = to_shape(p.location)
         points_schema.append(
              schemas.PointOfInterest(
                 id=p.id,
@@ -232,8 +264,8 @@ async def delete_route(
                 description=p.description,
                 historic_image_url=p.historic_image_url,
                 modern_image_url=p.modern_image_url,
-                latitude=pt.y,
-                longitude=pt.x
+                latitude=p.latitude,
+                longitude=p.longitude
             )
         )
     

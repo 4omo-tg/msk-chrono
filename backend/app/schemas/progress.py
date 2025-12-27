@@ -7,6 +7,7 @@ class UserProgressBase(BaseModel):
 
 class UserProgressCreate(UserProgressBase):
     route_id: int
+    status: str = "started"
 
 class UserProgressUpdate(BaseModel):
     status: Optional[str] = None
@@ -21,3 +22,13 @@ class UserProgressInDBBase(UserProgressBase):
 
 class UserProgress(UserProgressInDBBase):
     pass
+
+class CheckIn(BaseModel):
+    poi_id: int
+    route_id: int
+
+class CheckInResponse(BaseModel):
+    updated_progress: UserProgress
+    xp_gained: float
+    new_total_xp: float
+    new_level: int

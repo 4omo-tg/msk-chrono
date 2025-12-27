@@ -7,16 +7,19 @@
 
     async function handleLogin() {
         try {
-            const response = await fetch("/api/v1/login/access-token", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
+            const response = await fetch(
+                "http://localhost:8000/api/v1/login/access-token",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: new URLSearchParams({
+                        username,
+                        password,
+                    }),
                 },
-                body: new URLSearchParams({
-                    username,
-                    password,
-                }),
-            });
+            );
 
             if (!response.ok) {
                 throw new Error("Invalid credentials");
@@ -26,7 +29,8 @@
             localStorage.setItem("token", data.access_token);
             push("/dashboard");
         } catch (e) {
-            error = "Login failed. Please check your username and password.";
+            error =
+                "Ошибка входа. Пожалуйста, проверьте имя пользователя и пароль.";
         }
     }
 </script>
@@ -39,7 +43,7 @@
     >
         <div>
             <h2 class="mt-6 text-center text-3xl font-extrabold text-white">
-                Sign in to your account
+                Войдите в свой аккаунт
             </h2>
         </div>
         <form class="mt-8 space-y-6" on:submit|preventDefault={handleLogin}>
@@ -52,7 +56,9 @@
             {/if}
             <div class="rounded-md shadow-sm -space-y-px">
                 <div>
-                    <label for="username" class="sr-only">Username</label>
+                    <label for="username" class="sr-only"
+                        >Имя пользователя</label
+                    >
                     <input
                         id="username"
                         name="username"
@@ -60,11 +66,11 @@
                         required
                         bind:value={username}
                         class="appearance-none rounded-none relative block w-full px-3 py-2 border border-neutral-700 placeholder-gray-500 text-white bg-neutral-900 rounded-t-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm"
-                        placeholder="Username"
+                        placeholder="Имя пользователя"
                     />
                 </div>
                 <div>
-                    <label for="password" class="sr-only">Password</label>
+                    <label for="password" class="sr-only">Пароль</label>
                     <input
                         id="password"
                         name="password"
@@ -72,7 +78,7 @@
                         required
                         bind:value={password}
                         class="appearance-none rounded-none relative block w-full px-3 py-2 border border-neutral-700 placeholder-gray-500 text-white bg-neutral-900 rounded-b-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm"
-                        placeholder="Password"
+                        placeholder="Пароль"
                     />
                 </div>
             </div>
@@ -82,19 +88,19 @@
                     type="submit"
                     class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-black bg-amber-500 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
                 >
-                    Sign in
+                    Войти
                 </button>
             </div>
             <div class="text-center">
                 <a
                     href="#/register"
                     class="text-sm text-amber-500 hover:text-amber-400"
-                    >Don't have an account? Sign up</a
+                    >Нет аккаунта? Зарегистрироваться</a
                 >
             </div>
             <div class="text-center">
                 <a href="#/" class="text-sm text-gray-500 hover:text-gray-400"
-                    >Back to Home</a
+                    >На главную</a
                 >
             </div>
         </form>
