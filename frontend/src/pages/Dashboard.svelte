@@ -463,88 +463,40 @@
                             {/if}
                         </div>
                     </div>
-                {:else}
-                    <div class="py-12 text-center">
-                        <div class="mb-6 flex justify-center text-amber-500/30">
-                            <MapIcon size={64} />
-                        </div>
-                        <h2 class="text-xl font-bold mb-2">
-                            Маршрут не выбран
-                        </h2>
-                        <p class="text-gray-400 text-sm mb-8 leading-relaxed">
-                            Чтобы отмечаться в точках, нужно сначала
-                            активировать маршрут.
-                        </p>
-                        <a
-                            href="#/routes"
-                            class="inline-block py-3 px-8 bg-amber-500 hover:bg-amber-600 rounded-xl text-black font-bold transition-all transform active:scale-95"
-                        >
-                            К маршрутам
-                        </a>
-                    </div>
-                {/if}
             {:else}
-                {#if activeRouteProgress}
-                    <div class="mb-8">
-                        <h2 class="text-lg font-bold mb-4 text-gray-300">
-                            Текущая экспедиция
-                        </h2>
-                        <div
-                            class="bg-white/5 p-5 rounded-2xl border border-white/10 shadow-inner"
-                        >
-                            <div class="flex justify-between items-center mb-4">
-                                <span
-                                    class="text-xs font-bold uppercase tracking-tighter text-gray-500"
-                                    >Прогресс</span
-                                >
-                                <span class="text-sm font-black text-amber-500">
-                                    {activeRouteProgress.completed_points_count}
-                                    / {totalPoints}
-                                </span>
-                            </div>
-                            <div
-                                class="w-full h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5"
+                <!-- Сайдбар когда не выбрана точка -->
+                <div class="mb-8">
+                    <h2 class="text-lg font-bold mb-4 text-gray-300">
+                        Текущая экспедиция
+                    </h2>
+                    <div
+                        class="bg-white/5 p-5 rounded-2xl border border-white/10 shadow-inner"
+                    >
+                        <div class="flex justify-between items-center mb-4">
+                            <span
+                                class="text-xs font-bold uppercase tracking-tighter text-gray-500"
+                                >Прогресс</span
                             >
-                                <div
-                                    class="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
-                                    style="width: {(activeRouteProgress.completed_points_count /
-                                        (totalPoints || 1)) *
-                                        100}%"
-                                ></div>
-                            </div>
+                            <span class="text-sm font-black text-amber-500">
+                                {activeRouteProgress.completed_points_count}
+                                / {totalPoints}
+                            </span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-3">
-                            Нажмите на маркер на карте, чтобы увидеть информацию о точке
-                        </p>
-                    </div>
-                {:else}
-                    <div class="h-full flex flex-col items-center justify-center text-center px-6">
-                        <div class="mb-6">
-                            <div class="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
-                                <MapIcon size={40} class="text-amber-500/50" />
-                            </div>
-                            <h2 class="text-xl font-bold text-white mb-2">
-                                Добро пожаловать!
-                            </h2>
-                            <p class="text-gray-400 text-sm leading-relaxed mb-6">
-                                Выберите маршрут, чтобы начать исследовать историческую Москву
-                            </p>
+                        <div
+                            class="w-full h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5"
+                        >
+                            <div
+                                class="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                                style="width: {(activeRouteProgress.completed_points_count /
+                                    (totalPoints || 1)) *
+                                    100}%"
+                            ></div>
                         </div>
-                        <a
-                            href="#/routes"
-                            class="w-full py-4 bg-amber-500 hover:bg-amber-600 rounded-xl text-black font-bold transition-all transform active:scale-95 shadow-lg shadow-amber-500/20 text-center"
-                        >
-                            Выбрать маршрут
-                        </a>
-                        <button
-                            on:click={() => showOnboarding = true}
-                            class="mt-4 text-sm text-gray-400 hover:text-amber-400 transition-colors flex items-center gap-2"
-                        >
-                            <HelpCircle size={16} />
-                            Как это работает?
-                        </button>
                     </div>
-                {/if}
+                    <p class="text-xs text-gray-500 mt-3">
+                        Нажмите на маркер на карте, чтобы увидеть информацию о точке
+                    </p>
+                </div>
             {/if}
         </div>
         {/if}
