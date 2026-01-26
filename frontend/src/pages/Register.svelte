@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { API_BASE } from "../lib/config";
     import { push } from "svelte-spa-router";
 
     let email = "";
@@ -9,7 +10,7 @@
     async function handleRegister() {
         try {
             const response = await fetch(
-                "http://localhost:8000/api/v1/register",
+                `${API_BASE}/api/v1/register`,
                 {
                     method: "POST",
                     headers: {
@@ -29,7 +30,7 @@
 
             // Auto login after register
             const loginResponse = await fetch(
-                "http://localhost:8000/api/v1/login/access-token",
+                `${API_BASE}/api/v1/login/access-token`,
                 {
                     method: "POST",
                     headers: {
@@ -45,7 +46,7 @@
             if (loginResponse.ok) {
                 const data = await loginResponse.json();
                 localStorage.setItem("token", data.access_token);
-                push("/dashboard");
+                push("/routes");
             } else {
                 push("/login");
             }

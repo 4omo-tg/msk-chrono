@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { API_BASE } from "../lib/config";
     import { push } from "svelte-spa-router";
 
     let username = "";
@@ -8,7 +9,7 @@
     async function handleLogin() {
         try {
             const response = await fetch(
-                "http://localhost:8000/api/v1/login/access-token",
+                `${API_BASE}/api/v1/login/access-token`,
                 {
                     method: "POST",
                     headers: {
@@ -27,7 +28,7 @@
 
             const data = await response.json();
             localStorage.setItem("token", data.access_token);
-            push("/dashboard");
+            push("/routes");
         } catch (e) {
             error =
                 "Ошибка входа. Пожалуйста, проверьте имя пользователя и пароль.";
