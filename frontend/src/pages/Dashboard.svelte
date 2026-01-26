@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { API_BASE } from "../lib/config";
     import { push } from "svelte-spa-router";
     import { onMount } from "svelte";
     import Map from "../components/Map.svelte";
@@ -52,7 +53,7 @@
         try {
             // Fetch current user data
             const userRes = await fetch(
-                "http://localhost:8000/api/v1/users/me/",
+                `${API_BASE}/api/v1/users/me/`,
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 },
@@ -64,7 +65,7 @@
 
             // Fetch progress to find ANY active route
             const progRes = await fetch(
-                "http://localhost:8000/api/v1/progress/",
+                `${API_BASE}/api/v1/progress/`,
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 },
@@ -78,7 +79,7 @@
 
                 // Fetch all routes for reactive totalPoints calculation
                 const routesRes = await fetch(
-                    "http://localhost:8000/api/v1/routes/",
+                    `${API_BASE}/api/v1/routes/`,
                 );
                 if (routesRes.ok) {
                     allRoutes = await routesRes.json();
@@ -99,7 +100,7 @@
         const token = localStorage.getItem("token");
         try {
             const response = await fetch(
-                "http://localhost:8000/api/v1/progress/check-in",
+                `${API_BASE}/api/v1/progress/check-in`,
                 {
                     method: "POST",
                     headers: {
@@ -122,7 +123,7 @@
 
                 // Force reload of progress to ensure consistency
                 const progressResponse = await fetch(
-                    "http://localhost:8000/api/v1/progress/current",
+                    `${API_BASE}/api/v1/progress/current`,
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -172,7 +173,7 @@
         try {
             const token = localStorage.getItem("token");
             const response = await fetch(
-                `http://localhost:8000/api/v1/quizzes/poi/${poiId}`,
+                `${API_BASE}/api/v1/quizzes/poi/${poiId}`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -236,7 +237,7 @@
         if (activeRouteProgress && activeRouteProgress.route_id) {
             // Fetch route details to get current totalPoints
             fetch(
-                `http://localhost:8000/api/v1/routes/${activeRouteProgress.route_id}`,
+                `${API_BASE}/api/v1/routes/${activeRouteProgress.route_id}`,
             )
                 .then((res) => res.json())
                 .then((route) => {

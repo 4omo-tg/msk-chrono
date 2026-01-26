@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { API_BASE } from "../lib/config";
     import { onMount } from "svelte";
     import { push } from "svelte-spa-router";
     import { User } from "lucide-svelte";
@@ -13,7 +14,7 @@
         try {
             // 1. Fetch Routes
             const response = await fetch(
-                "http://localhost:8000/api/v1/routes/",
+                `${API_BASE}/api/v1/routes/`,
             );
             if (!response.ok) throw new Error("Failed to fetch routes");
             routes = await response.json();
@@ -22,7 +23,7 @@
             const token = localStorage.getItem("token");
             if (token) {
                 const progressRes = await fetch(
-                    "http://localhost:8000/api/v1/progress/",
+                    `${API_BASE}/api/v1/progress/`,
                     {
                         headers: { Authorization: `Bearer ${token}` },
                     },
@@ -58,7 +59,7 @@
 
         try {
             const response = await fetch(
-                "http://localhost:8000/api/v1/progress/",
+                `${API_BASE}/api/v1/progress/`,
                 {
                     method: "POST",
                     headers: {

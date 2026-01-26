@@ -10,6 +10,16 @@ export default defineConfig({
       '/api': {
         target: 'http://backend:8000',
         changeOrigin: true,
+        followRedirects: true,
+      },
+      '/admin': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
+        followRedirects: true,
+      },
+      '/static': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
       },
     },
   },

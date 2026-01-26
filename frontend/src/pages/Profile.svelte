@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { API_BASE } from "../lib/config";
     import { push } from "svelte-spa-router";
     import { onMount } from "svelte";
     import { User } from "lucide-svelte";
@@ -17,7 +18,7 @@
         try {
             // 1. Get User Data
             const userRes = await fetch(
-                "http://localhost:8000/api/v1/users/me/",
+                `${API_BASE}/api/v1/users/me/`,
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 },
@@ -28,7 +29,7 @@
 
             // 2. Get Progress Stats
             const progressRes = await fetch(
-                "http://localhost:8000/api/v1/progress/",
+                `${API_BASE}/api/v1/progress/`,
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 },

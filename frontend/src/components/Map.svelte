@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { API_BASE } from "../lib/config";
     import { onMount, onDestroy, createEventDispatcher } from "svelte";
     import L from "leaflet";
     import "leaflet/dist/leaflet.css";
@@ -19,7 +20,7 @@
         try {
             // Optimization: could just fetch specific route if endpoint exists, but strictly using available ones
             const response = await fetch(
-                "http://localhost:8000/api/v1/routes/",
+                `${API_BASE}/api/v1/routes/`,
             );
             if (response.ok) {
                 const routes = await response.json();
