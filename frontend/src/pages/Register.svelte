@@ -46,7 +46,9 @@
             if (loginResponse.ok) {
                 const data = await loginResponse.json();
                 localStorage.setItem("token", data.access_token);
-                push("/routes");
+                // Сбросить onboarding чтобы показать помощь новому пользователю
+                localStorage.removeItem("onboarding_completed");
+                push("/dashboard");
             } else {
                 push("/login");
             }

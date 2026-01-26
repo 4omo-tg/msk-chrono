@@ -484,11 +484,11 @@
                     </div>
                 {/if}
             {:else}
-                <div class="mb-8">
-                    <h2 class="text-lg font-bold mb-4 text-gray-300">
-                        Текущая экспедиция
-                    </h2>
-                    {#if activeRouteProgress}
+                {#if activeRouteProgress}
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold mb-4 text-gray-300">
+                            Текущая экспедиция
+                        </h2>
                         <div
                             class="bg-white/5 p-5 rounded-2xl border border-white/10 shadow-inner"
                         >
@@ -513,27 +513,38 @@
                                 ></div>
                             </div>
                         </div>
-                    {:else}
-                        <div
-                            class="bg-amber-500/5 border border-amber-500/10 p-6 rounded-2xl text-center"
-                        >
-                            <div
-                                class="text-amber-500/20 mb-3 flex justify-center"
-                            >
-                                <MapIcon size={40} />
+                        <p class="text-xs text-gray-500 mt-3">
+                            Нажмите на маркер на карте, чтобы увидеть информацию о точке
+                        </p>
+                    </div>
+                {:else}
+                    <div class="h-full flex flex-col items-center justify-center text-center px-6">
+                        <div class="mb-6">
+                            <div class="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
+                                <MapIcon size={40} class="text-amber-500/50" />
                             </div>
-                            <p class="text-sm text-amber-200/50 italic mb-4">
-                                У вас нет активных экспедиций.
+                            <h2 class="text-xl font-bold text-white mb-2">
+                                Добро пожаловать!
+                            </h2>
+                            <p class="text-gray-400 text-sm leading-relaxed mb-6">
+                                Выберите маршрут, чтобы начать исследовать историческую Москву
                             </p>
-                            <a
-                                href="#/routes"
-                                class="text-xs font-bold text-amber-500 hover:text-amber-400 underline underline-offset-4"
-                            >
-                                Выбрать маршрут →
-                            </a>
                         </div>
-                    {/if}
-                </div>
+                        <a
+                            href="#/routes"
+                            class="w-full py-4 bg-amber-500 hover:bg-amber-600 rounded-xl text-black font-bold transition-all transform active:scale-95 shadow-lg shadow-amber-500/20 text-center"
+                        >
+                            Выбрать маршрут
+                        </a>
+                        <button
+                            on:click={() => showOnboarding = true}
+                            class="mt-4 text-sm text-gray-400 hover:text-amber-400 transition-colors flex items-center gap-2"
+                        >
+                            <HelpCircle size={16} />
+                            Как это работает?
+                        </button>
+                    </div>
+                {/if}
             {/if}
         </div>
 
