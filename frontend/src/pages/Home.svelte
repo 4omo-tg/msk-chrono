@@ -198,29 +198,6 @@
             </div>
         </section>
 
-        <!-- Stats Section -->
-        <section class="py-16 bg-gradient-to-r from-amber-500/10 via-amber-600/5 to-amber-500/10">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                    <div>
-                        <div class="text-4xl md:text-5xl font-bold text-amber-400 mb-2">50+</div>
-                        <div class="text-gray-400">Маршрутов</div>
-                    </div>
-                    <div>
-                        <div class="text-4xl md:text-5xl font-bold text-amber-400 mb-2">500+</div>
-                        <div class="text-gray-400">Исторических точек</div>
-                    </div>
-                    <div>
-                        <div class="text-4xl md:text-5xl font-bold text-amber-400 mb-2">10K+</div>
-                        <div class="text-gray-400">Исследователей</div>
-                    </div>
-                    <div>
-                        <div class="text-4xl md:text-5xl font-bold text-amber-400 mb-2">1000+</div>
-                        <div class="text-gray-400">Архивных фото</div>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <!-- CTA Section -->
         <section class="py-20">
