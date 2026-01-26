@@ -1,6 +1,86 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    .gallery-section {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 15px 0;
+    }
+    .gallery-section h3 {
+        margin: 0 0 15px 0;
+        color: #495057;
+        font-size: 16px;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 10px;
+    }
+    .gallery-images {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .gallery-item {
+        position: relative;
+        width: 120px;
+        height: 90px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .gallery-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .gallery-item .remove-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+    }
+    .gallery-item .remove-btn:hover {
+        background: #dc3545;
+    }
+    .add-image-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 10px;
+    }
+    .add-image-row input[type="file"] {
+        flex: 1;
+    }
+    .add-image-row input[type="text"] {
+        flex: 2;
+    }
+    .panorama-preview {
+        width: 100%;
+        max-height: 150px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+    .section-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .section-label .icon {
+        font-size: 18px;
+    }
+</style>
+
 <a href="/admin/pois">&larr; Back to List</a>
 <h1 id="header">Create POI</h1>
 <form id="poiForm">
@@ -16,17 +96,59 @@
     <label>Longitude</label>
     <input type="number" step="any" id="longitude" required>
 
-    <label>Historic Image (Upload)</label>
-    <input type="file" id="histFile" accept="image/*">
-    <input type="text" id="historic_image_url" placeholder="or Enter URL" style="margin-top:5px">
-    <div id="histPreview"></div>
+    <!-- Legacy single images -->
+    <div class="gallery-section">
+        <h3>🖼️ Основные изображения (старый формат)</h3>
+        
+        <label>Historic Image URL</label>
+        <input type="file" id="histFile" accept="image/*">
+        <input type="text" id="historic_image_url" placeholder="or Enter URL" style="margin-top:5px">
+        <div id="histPreview"></div>
 
-    <label>Modern Image (Upload)</label>
-    <input type="file" id="modFile" accept="image/*">
-    <input type="text" id="modern_image_url" placeholder="or Enter URL" style="margin-top:5px">
-    <div id="modPreview"></div>
+        <label>Modern Image URL</label>
+        <input type="file" id="modFile" accept="image/*">
+        <input type="text" id="modern_image_url" placeholder="or Enter URL" style="margin-top:5px">
+        <div id="modPreview"></div>
+    </div>
 
-    <button type="submit">Save</button>
+    <!-- Historic Images Gallery -->
+    <div class="gallery-section">
+        <h3>📷 Исторические фото (галерея)</h3>
+        <div class="gallery-images" id="historicGallery"></div>
+        <div class="add-image-row">
+            <input type="file" id="addHistoricFile" accept="image/*">
+            <input type="text" id="addHistoricUrl" placeholder="или вставьте URL">
+            <button type="button" onclick="addHistoricImage()">➕ Добавить</button>
+        </div>
+    </div>
+
+    <!-- Modern Images Gallery -->
+    <div class="gallery-section">
+        <h3>📸 Современные фото (галерея)</h3>
+        <div class="gallery-images" id="modernGallery"></div>
+        <div class="add-image-row">
+            <input type="file" id="addModernFile" accept="image/*">
+            <input type="text" id="addModernUrl" placeholder="или вставьте URL">
+            <button type="button" onclick="addModernImage()">➕ Добавить</button>
+        </div>
+    </div>
+
+    <!-- Panoramas -->
+    <div class="gallery-section">
+        <h3>🌄 Панорамы</h3>
+        
+        <label>Историческая панорама</label>
+        <input type="file" id="histPanoFile" accept="image/*">
+        <input type="text" id="historic_panorama_url" placeholder="или вставьте URL" style="margin-top:5px">
+        <div id="histPanoPreview"></div>
+
+        <label>Современная панорама</label>
+        <input type="file" id="modPanoFile" accept="image/*">
+        <input type="text" id="modern_panorama_url" placeholder="или вставьте URL" style="margin-top:5px">
+        <div id="modPanoPreview"></div>
+    </div>
+
+    <button type="submit">💾 Save</button>
 </form>
 
 <script>
@@ -34,7 +156,83 @@
     const isEdit = !isNaN(id);
     if (isEdit) {
         document.getElementById('header').innerText = 'Edit POI ' + id;
-        load();
+        // Wait for api() to be defined from base.html
+        setTimeout(() => load(), 100);
+    }
+
+    // Gallery arrays
+    let historicImages = [];
+    let modernImages = [];
+
+    // Render gallery
+    function renderGallery(containerId, images, removeCallback) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        images.forEach((url, idx) => {
+            const div = document.createElement('div');
+            div.className = 'gallery-item';
+            const fullUrl = url.startsWith('http') ? url : window.location.origin + url;
+            div.innerHTML = `
+                <img src="${fullUrl}" alt="Image ${idx + 1}">
+                <button type="button" class="remove-btn" onclick="${removeCallback}(${idx})">&times;</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function removeHistoricImage(idx) {
+        historicImages.splice(idx, 1);
+        renderGallery('historicGallery', historicImages, 'removeHistoricImage');
+    }
+
+    function removeModernImage(idx) {
+        modernImages.splice(idx, 1);
+        renderGallery('modernGallery', modernImages, 'removeModernImage');
+    }
+
+    async function addHistoricImage() {
+        const url = await getImageUrl('addHistoricFile', 'addHistoricUrl');
+        if (url) {
+            historicImages.push(url);
+            renderGallery('historicGallery', historicImages, 'removeHistoricImage');
+            document.getElementById('addHistoricFile').value = '';
+            document.getElementById('addHistoricUrl').value = '';
+        }
+    }
+
+    async function addModernImage() {
+        const url = await getImageUrl('addModernFile', 'addModernUrl');
+        if (url) {
+            modernImages.push(url);
+            renderGallery('modernGallery', modernImages, 'removeModernImage');
+            document.getElementById('addModernFile').value = '';
+            document.getElementById('addModernUrl').value = '';
+        }
+    }
+
+    async function getImageUrl(fileInputId, urlInputId) {
+        const fileInput = document.getElementById(fileInputId);
+        const urlInput = document.getElementById(urlInputId);
+        
+        // If URL is provided, use it
+        if (urlInput.value.trim()) {
+            return urlInput.value.trim();
+        }
+        
+        // Otherwise try to upload file
+        const file = fileInput.files[0];
+        if (file) {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await api('/api/v1/files/upload', { method: 'POST', body: fd });
+            if (res.ok) {
+                const data = await res.json();
+                return data.url;
+            } else {
+                alert('Upload failed');
+            }
+        }
+        return null;
     }
 
     async function handleUpload(fileInputId, urlInputId, previewId) {
@@ -59,27 +257,50 @@
     function renderPreview(divId, url) {
         const div = document.getElementById(divId);
         if (url) {
-            // Prepend base URL if it's a relative path
             const fullUrl = url.startsWith('http') ? url : window.location.origin + url;
-            div.innerHTML = `<img src="${fullUrl}" style="max-height: 100px; margin-top: 5px; border: 1px solid #ccc;">`;
+            div.innerHTML = `<img src="${fullUrl}" class="panorama-preview">`;
+        } else {
+            div.innerHTML = '';
         }
     }
 
+    // Setup upload handlers for single images
     handleUpload('histFile', 'historic_image_url', 'histPreview');
     handleUpload('modFile', 'modern_image_url', 'modPreview');
+    handleUpload('histPanoFile', 'historic_panorama_url', 'histPanoPreview');
+    handleUpload('modPanoFile', 'modern_panorama_url', 'modPanoPreview');
+
+    // Also update preview when URL is manually changed
+    ['historic_image_url', 'modern_image_url', 'historic_panorama_url', 'modern_panorama_url'].forEach(id => {
+        document.getElementById(id).addEventListener('input', (e) => {
+            const previewId = id.replace('_url', '').replace('historic_image', 'hist').replace('modern_image', 'mod').replace('historic_panorama', 'histPano').replace('modern_panorama', 'modPano') + 'Preview';
+            renderPreview(previewId, e.target.value);
+        });
+    });
 
     async function load() {
         const res = await api('/api/v1/pois/' + id);
         if (res.ok) {
             const data = await res.json();
-            document.getElementById('title').value = data.title;
-            document.getElementById('description').value = data.description;
+            document.getElementById('title').value = data.title || '';
+            document.getElementById('description').value = data.description || '';
             document.getElementById('latitude').value = data.latitude;
             document.getElementById('longitude').value = data.longitude;
-            document.getElementById('historic_image_url').value = data.historic_image_url;
-            document.getElementById('modern_image_url').value = data.modern_image_url;
+            document.getElementById('historic_image_url').value = data.historic_image_url || '';
+            document.getElementById('modern_image_url').value = data.modern_image_url || '';
+            document.getElementById('historic_panorama_url').value = data.historic_panorama_url || '';
+            document.getElementById('modern_panorama_url').value = data.modern_panorama_url || '';
+            
             renderPreview('histPreview', data.historic_image_url);
             renderPreview('modPreview', data.modern_image_url);
+            renderPreview('histPanoPreview', data.historic_panorama_url);
+            renderPreview('modPanoPreview', data.modern_panorama_url);
+            
+            // Load galleries
+            historicImages = data.historic_images || [];
+            modernImages = data.modern_images || [];
+            renderGallery('historicGallery', historicImages, 'removeHistoricImage');
+            renderGallery('modernGallery', modernImages, 'removeModernImage');
         }
     }
 
@@ -90,8 +311,12 @@
             description: document.getElementById('description').value,
             latitude: parseFloat(document.getElementById('latitude').value),
             longitude: parseFloat(document.getElementById('longitude').value),
-            historic_image_url: document.getElementById('historic_image_url').value,
-            modern_image_url: document.getElementById('modern_image_url').value,
+            historic_image_url: document.getElementById('historic_image_url').value || null,
+            modern_image_url: document.getElementById('modern_image_url').value || null,
+            historic_images: historicImages,
+            modern_images: modernImages,
+            historic_panorama_url: document.getElementById('historic_panorama_url').value || null,
+            modern_panorama_url: document.getElementById('modern_panorama_url').value || null,
         };
 
         let res;

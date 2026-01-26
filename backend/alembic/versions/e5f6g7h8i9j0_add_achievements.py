@@ -50,15 +50,33 @@ def upgrade() -> None:
     op.create_index('ix_user_achievement_id', 'user_achievement', ['id'])
     op.create_index('ix_user_achievement_user_id', 'user_achievement', ['user_id'])
     
-    # Seed default achievements
+    # Seed default achievements - разнообразные ачивки
     op.execute("""
         INSERT INTO achievement (code, title, description, icon, xp_reward, condition_type, condition_value) VALUES
-        ('first_step', 'Первый шаг', 'Посетите первую точку', 'MapPin', 25, 'points', 1),
-        ('explorer', 'Исследователь', 'Посетите 5 точек', 'Compass', 50, 'points', 5),
-        ('pathfinder', 'Следопыт', 'Завершите первый маршрут', 'Route', 100, 'routes', 1),
-        ('veteran', 'Ветеран', 'Посетите 10 точек', 'Star', 75, 'points', 10),
-        ('master', 'Мастер', 'Завершите 3 маршрута', 'Trophy', 150, 'routes', 3),
-        ('legend', 'Легенда', 'Достигните 5 уровня', 'Award', 200, 'level', 5)
+        -- Точки (points)
+        ('first_step', 'Первый шаг', 'Посетите первую достопримечательность Москвы', 'Footprints', 25, 'points', 1),
+        ('curious', 'Любопытный турист', 'Посетите 3 точки на маршрутах', 'Target', 30, 'points', 3),
+        ('explorer', 'Исследователь', 'Откройте для себя 5 исторических мест', 'Compass', 50, 'points', 5),
+        ('historian', 'Знаток истории', 'Посетите 10 достопримечательностей', 'BookOpen', 75, 'points', 10),
+        ('veteran', 'Ветеран прогулок', 'Посетите 20 точек по всей Москве', 'Medal', 100, 'points', 20),
+        ('moscow_expert', 'Эксперт по Москве', 'Посетите 50 исторических мест', 'Star', 200, 'points', 50),
+        
+        -- Маршруты (routes)
+        ('pathfinder', 'Следопыт', 'Завершите свой первый маршрут полностью', 'Flag', 100, 'routes', 1),
+        ('wanderer', 'Странник', 'Пройдите 2 разных маршрута', 'Route', 120, 'routes', 2),
+        ('master', 'Мастер маршрутов', 'Завершите 3 маршрута', 'Trophy', 150, 'routes', 3),
+        ('city_walker', 'Городской ходок', 'Пройдите 5 маршрутов по Москве', 'Mountain', 250, 'routes', 5),
+        
+        -- Уровни (level)
+        ('rising_star', 'Восходящая звезда', 'Достигните 2 уровня', 'Zap', 50, 'level', 2),
+        ('experienced', 'Опытный', 'Достигните 3 уровня', 'Flame', 75, 'level', 3),
+        ('legend', 'Легенда Москвы', 'Достигните 5 уровня', 'Crown', 200, 'level', 5),
+        ('mythical', 'Мифический статус', 'Достигните 10 уровня', 'Gem', 500, 'level', 10),
+        
+        -- Квизы (quizzes)
+        ('quiz_starter', 'Начинающий эрудит', 'Правильно ответьте на первый квиз', 'Sparkles', 25, 'quizzes', 1),
+        ('quiz_lover', 'Любитель загадок', 'Пройдите 5 квизов успешно', 'BookOpen', 75, 'quizzes', 5),
+        ('quiz_master', 'Мастер викторин', 'Ответьте правильно на 10 квизов', 'Award', 150, 'quizzes', 10)
     """)
 
 

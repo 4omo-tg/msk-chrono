@@ -15,7 +15,8 @@ async def check_and_award_achievements(
     db: AsyncSession,
     user: models.User,
     total_points: int,
-    completed_routes: int
+    completed_routes: int,
+    total_quizzes: int = 0
 ) -> List[models.Achievement]:
     """
     Check if user qualifies for any new achievements and award them.
@@ -48,6 +49,8 @@ async def check_and_award_achievements(
             unlocked = completed_routes >= achievement.condition_value
         elif achievement.condition_type == 'level':
             unlocked = user.level >= achievement.condition_value
+        elif achievement.condition_type == 'quizzes':
+            unlocked = total_quizzes >= achievement.condition_value
         
         if unlocked:
             # Award achievement

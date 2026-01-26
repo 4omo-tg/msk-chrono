@@ -209,8 +209,16 @@ async def check_in(
     total_points = sum(p.completed_points_count for p in all_progress)
     completed_routes = sum(1 for p in all_progress if p.status == 'completed')
     
+    # Get quiz count
+    quiz_result = await db.execute(
+        select(models.UserQuizProgress)
+        .where(models.UserQuizProgress.user_id == current_user.id)
+        .where(models.UserQuizProgress.is_correct == True)
+    )
+    total_quizzes = len(quiz_result.scalars().all())
+    
     new_achievements = await check_and_award_achievements(
-        db, current_user, total_points, completed_routes
+        db, current_user, total_points, completed_routes, total_quizzes
     )
     
     # Add achievement XP to response

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app import models, schemas
 from app.api import deps
+from app.api.v1.endpoints.achievements import check_and_award_achievements
 import math
 
 router = APIRouter()
@@ -166,10 +167,42 @@ async def submit_quiz_answer(
     await db.commit()
     await db.refresh(current_user)
     
+    # Check for quiz achievements if correct
+    new_achievements = []
+    if is_correct:
+        # Get stats for achievements
+        progress_result = await db.execute(
+            select(models.UserProgress)
+            .where(models.UserProgress.user_id == current_user.id)
+        )
+        all_progress = progress_result.scalars().all()
+        total_points = sum(p.completed_points_count for p in all_progress)
+        completed_routes = sum(1 for p in all_progress if p.status == 'completed')
+        
+        quiz_result = await db.execute(
+            select(models.UserQuizProgress)
+            .where(models.UserQuizProgress.user_id == current_user.id)
+            .where(models.UserQuizProgress.is_correct == True)
+        )
+        total_quizzes = len(quiz_result.scalars().all())
+        
+        new_achievements = await check_and_award_achievements(
+            db, current_user, total_points, completed_routes, total_quizzes
+        )
+        await db.refresh(current_user)
+    
     return {
         "is_correct": is_correct,
         "xp_earned": xp_earned,
         "correct_answer": quiz.correct_answer,
         "new_total_xp": current_user.xp,
-        "new_level": current_user.level
+        "new_level": current_user.level,
+        "new_achievements": [{
+            "id": a.id,
+            "code": a.code,
+            "title": a.title,
+            "description": a.description,
+            "icon": a.icon,
+            "xp_reward": a.xp_reward
+        } for a in new_achievements]
     }
