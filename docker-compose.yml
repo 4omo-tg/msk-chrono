@@ -16,11 +16,12 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/moscow_chrono
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/moscow_chrono
       - SECRET_KEY=changethisikey
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
-    network_mode: "host"
+    ports:
+      - "8000:8000"
     depends_on:
       - db
 

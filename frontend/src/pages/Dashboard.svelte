@@ -4,6 +4,7 @@
     import Map from "../components/Map.svelte";
     import QuizModal from "../components/QuizModal.svelte";
     import VerificationModal from "../components/VerificationModal.svelte";
+    import OnboardingModal from "../components/OnboardingModal.svelte";
     import {
         User,
         LogOut,
@@ -11,6 +12,7 @@
         Clock,
         Camera,
         Map as MapIcon,
+        HelpCircle,
     } from "lucide-svelte";
 
     let selectedPOI: any = null;
@@ -31,11 +33,20 @@
     // Verification state
     let showVerificationModal: boolean = false;
 
+    // Onboarding state
+    let showOnboarding: boolean = false;
+
     onMount(async () => {
         const token = localStorage.getItem("token");
         if (!token) {
             push("/login");
             return;
+        }
+
+        // Check if onboarding was completed
+        const onboardingCompleted = localStorage.getItem("onboarding_completed");
+        if (!onboardingCompleted) {
+            showOnboarding = true;
         }
 
         try {
@@ -306,6 +317,14 @@
                 class="hover:text-amber-400 text-sm font-medium transition-colors"
                 >Маршруты</a
             >
+            <button
+                on:click={() => showOnboarding = true}
+                class="flex items-center gap-2 hover:text-amber-400 text-sm font-medium transition-colors"
+                title="Как пользоваться"
+            >
+                <HelpCircle size={18} />
+                <span>Помощь</span>
+            </button>
             <a
                 href="#/profile"
                 class="flex items-center gap-2 hover:text-amber-400 text-sm font-medium transition-colors"
@@ -591,4 +610,9 @@
         on:close={() => (showVerificationModal = false)}
         on:verified={handleVerified}
     />
+{/if}
+
+<!-- Onboarding Modal -->
+{#if showOnboarding}
+    <OnboardingModal on:complete={() => showOnboarding = false} />
 {/if}
