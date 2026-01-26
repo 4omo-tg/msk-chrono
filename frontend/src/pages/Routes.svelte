@@ -1,5 +1,6 @@
 <script lang="ts">
     import { API_BASE } from "../lib/config";
+    import { apiGet, apiPost, apiDelete, isAuthenticated } from "../lib/api";
     import { onMount } from "svelte";
     import { push } from "svelte-spa-router";
     import { User } from "lucide-svelte";
@@ -12,7 +13,7 @@
 
     onMount(async () => {
         try {
-            // 1. Fetch Routes
+            // 1. Fetch Routes (public endpoint)
             const response = await fetch(
                 `${API_BASE}/api/v1/routes/`,
             );
@@ -20,14 +21,8 @@
             routes = await response.json();
 
             // 2. Fetch Progress (if logged in)
-            const token = localStorage.getItem("token");
-            if (token) {
-                const progressRes = await fetch(
-                    `${API_BASE}/api/v1/progress/`,
-                    {
-                        headers: { Authorization: `Bearer ${token}` },
-                    },
-                );
+            if (isAuthenticated()) {
+                const progressRes = await apiGet("/api/v1/progress/");
                 if (progressRes.ok) {
                     const progressData = await progressRes.json();
                     progressData.forEach((p: any) => {
@@ -48,28 +43,20 @@
 
     async function startRoute(routeId: number) {
         console.log("Starting route:", routeId);
-        const token = localStorage.getItem("token");
-        if (!token) {
-            console.log("No token found, redirecting to login");
-            push("/login");
+        if (!isAuthenticated()) {
+            console.log("No token found, redirecting to register");
+            push("/register");
             return;
         }
 
         startingRouteId = routeId;
 
         try {
-            const response = await fetch(
-                `${API_BASE}/api/v1/progress/`,
+            const response = await apiPost(
+                "/api/v1/progress/",
                 {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        route_id: routeId,
-                        status: "started",
-                    }),
+                    route_id: routeId,
+                    status: "started",
                 },
             );
 
@@ -98,8 +85,7 @@
             return;
         }
 
-        const token = localStorage.getItem("token");
-        if (!token) return;
+        if (!isAuthenticated()) return;
 
         const progress = progressMap[routeId];
         if (!progress) return;
@@ -107,14 +93,8 @@
         resettingRouteId = routeId;
 
         try {
-            const response = await fetch(
-                `${API_BASE}/api/v1/progress/${progress.id}`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                },
+            const response = await apiDelete(
+                `/api/v1/progress/${progress.id}`
             );
 
             if (response.ok) {

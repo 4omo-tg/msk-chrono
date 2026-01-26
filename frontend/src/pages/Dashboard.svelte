@@ -1,5 +1,6 @@
 <script lang="ts">
     import { API_BASE } from "../lib/config";
+    import { apiFetch, apiGet, apiPost, isAuthenticated, logout as apiLogout } from "../lib/api";
     import { push } from "svelte-spa-router";
     import { onMount } from "svelte";
     import Map from "../components/Map.svelte";
@@ -50,9 +51,8 @@
     let showOnboarding: boolean = false;
 
     onMount(async () => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            push("/login");
+        if (!isAuthenticated()) {
+            push("/register");
             return;
         }
 
@@ -64,24 +64,14 @@
 
         try {
             // Fetch current user data
-            const userRes = await fetch(
-                `${API_BASE}/api/v1/users/me/`,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                },
-            );
+            const userRes = await apiGet("/api/v1/users/me/");
             if (userRes.ok) {
                 const userData = await userRes.json();
                 userXP = userData.xp;
             }
 
             // Fetch progress to find ANY active route
-            const progRes = await fetch(
-                `${API_BASE}/api/v1/progress/`,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                },
-            );
+            const progRes = await apiGet("/api/v1/progress/");
             if (progRes.ok) {
                 const progressArr = await progRes.json();
                 // Find the first route that is 'started'
@@ -109,20 +99,12 @@
     async function checkIn() {
         if (!selectedPOI || !activeRouteProgress) return;
 
-        const token = localStorage.getItem("token");
         try {
-            const response = await fetch(
-                `${API_BASE}/api/v1/progress/check-in`,
+            const response = await apiPost(
+                "/api/v1/progress/check-in",
                 {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        poi_id: selectedPOI.id,
-                        route_id: activeRouteProgress.route_id,
-                    }),
+                    poi_id: selectedPOI.id,
+                    route_id: activeRouteProgress.route_id,
                 },
             );
 
@@ -142,13 +124,8 @@
                 }
 
                 // Force reload of progress to ensure consistency
-                const progressResponse = await fetch(
-                    `${API_BASE}/api/v1/progress/current`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                    },
+                const progressResponse = await apiGet(
+                    "/api/v1/progress/current"
                 );
 
                 if (progressResponse.ok) {
@@ -200,14 +177,8 @@
 
     async function loadQuizzesForPOI(poiId: number) {
         try {
-            const token = localStorage.getItem("token");
-            const response = await fetch(
-                `${API_BASE}/api/v1/quizzes/poi/${poiId}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                },
+            const response = await apiGet(
+                `/api/v1/quizzes/poi/${poiId}`
             );
 
             if (response.ok) {
@@ -248,8 +219,7 @@
     }
 
     function logout() {
-        localStorage.removeItem("token");
-        push("/");
+        apiLogout();
     }
 
     function handlePOISelection(event: CustomEvent) {

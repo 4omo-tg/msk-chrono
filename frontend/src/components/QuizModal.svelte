@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { apiPost } from "../lib/api";
     import { createEventDispatcher } from "svelte";
 
     export let currentQuiz: any = null;
@@ -23,17 +24,9 @@
         }
 
         try {
-            const token = localStorage.getItem("token");
-            const response = await fetch(
-                `http://localhost:8000/api/v1/quizzes/${currentQuiz.id}/submit`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ answer: selectedAnswer }),
-                },
+            const response = await apiPost(
+                `/api/v1/quizzes/${currentQuiz.id}/submit`,
+                { answer: selectedAnswer },
             );
 
             if (response.ok) {

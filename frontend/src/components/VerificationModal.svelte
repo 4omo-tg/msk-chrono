@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { API_BASE } from "../lib/config";
+    import { apiFetch } from "../lib/api";
     import { createEventDispatcher } from "svelte";
     import {
         Camera,
@@ -87,14 +89,10 @@
         }
 
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(
-                "http://localhost:8000/api/v1/verification/verify-poi",
+            const res = await apiFetch(
+                "/api/v1/verification/verify-poi",
                 {
                     method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
                     body: formData,
                 },
             );

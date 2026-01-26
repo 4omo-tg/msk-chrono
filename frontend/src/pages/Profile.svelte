@@ -1,5 +1,6 @@
 <script lang="ts">
     import { API_BASE } from "../lib/config";
+    import { apiGet, isAuthenticated, logout as apiLogout } from "../lib/api";
     import { push } from "svelte-spa-router";
     import { onMount } from "svelte";
     import { 
@@ -133,31 +134,20 @@
     $: unlockedAchievements = achievements.filter(a => a.unlocked);
 
     onMount(async () => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            push("/login");
+        if (!isAuthenticated()) {
+            push("/register");
             return;
         }
 
         try {
             // 1. Get User Data
-            const userRes = await fetch(
-                `${API_BASE}/api/v1/users/me/`,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                },
-            );
+            const userRes = await apiGet("/api/v1/users/me/");
             if (userRes.ok) {
                 user = await userRes.json();
             }
 
             // 2. Get Progress Stats
-            const progressRes = await fetch(
-                `${API_BASE}/api/v1/progress/`,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                },
-            );
+            const progressRes = await apiGet("/api/v1/progress/");
             if (progressRes.ok) {
                 const progressData = await progressRes.json();
                 // Simple logic: if points count matches route length (e.g. 8) or status is 'completed'
@@ -174,12 +164,7 @@
             }
             
             // 3. Get Achievements from server
-            const achievementsRes = await fetch(
-                `${API_BASE}/api/v1/achievements/`,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                },
-            );
+            const achievementsRes = await apiGet("/api/v1/achievements/");
             if (achievementsRes.ok) {
                 achievements = await achievementsRes.json();
             }
@@ -189,8 +174,7 @@
     });
 
     function logout() {
-        localStorage.removeItem("token");
-        push("/");
+        apiLogout();
     }
     // Reactive level details
     // Only calculate if user is loaded
