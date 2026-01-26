@@ -4,3 +4,4 @@ from .poi import PointOfInterest, PointOfInterestCreate, PointOfInterestUpdate
 from .route import Route, RouteCreate, RouteUpdate
 from .progress import UserProgress, UserProgressCreate, UserProgressUpdate, CheckIn, CheckInResponse
 from .quiz import Quiz, QuizCreate, QuizUpdate, QuizPublic, QuizSubmit, QuizSubmitResponse, UserQuizProgress
+from .verification import VerificationResponse

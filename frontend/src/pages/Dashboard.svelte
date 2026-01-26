@@ -3,6 +3,7 @@
     import { onMount } from "svelte";
     import Map from "../components/Map.svelte";
     import QuizModal from "../components/QuizModal.svelte";
+    import VerificationModal from "../components/VerificationModal.svelte";
     import {
         User,
         LogOut,
@@ -26,6 +27,9 @@
     let showQuiz: boolean = false;
     let currentQuizzes: any[] = [];
     let currentQuizIndex: number = 0;
+
+    // Verification state
+    let showVerificationModal: boolean = false;
 
     onMount(async () => {
         const token = localStorage.getItem("token");
@@ -144,6 +148,15 @@
         }
     }
 
+    function handleBeforeCheckIn() {
+        showVerificationModal = true;
+    }
+
+    function handleVerified() {
+        showVerificationModal = false;
+        checkIn();
+    }
+
     async function loadQuizzesForPOI(poiId: number) {
         try {
             const token = localStorage.getItem("token");
@@ -158,10 +171,7 @@
 
             if (response.ok) {
                 currentQuizzes = await response.json();
-                if (currentQuizzes.length > 0) {
-                    currentQuizIndex = 0;
-                    showQuiz = true;
-                }
+                // Removed auto-start: if (currentQuizzes.length > 0) { ... }
             }
         } catch (error) {
             console.error("Failed to load quizzes:", error);
@@ -337,7 +347,7 @@
                         <div class="space-y-6">
                             <div class="sticky top-0 z-20 bg-neutral-800 pb-4">
                                 <button
-                                    on:click={checkIn}
+                                    on:click={handleBeforeCheckIn}
                                     disabled={!selectedPOI.isCurrent}
                                     class="w-full py-4 rounded-xl font-black text-lg transition-all transform flex items-center justify-center gap-3 shadow-xl group
                                     {selectedPOI.isCurrent
@@ -411,6 +421,26 @@
                                     {selectedPOI.description}
                                 </p>
                             </div>
+
+                            {#if currentQuizzes.length > 0}
+                                <button
+                                    on:click={() => {
+                                        currentQuizIndex = 0;
+                                        showQuiz = true;
+                                    }}
+                                    class="w-full mt-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-bold py-4 px-6 rounded-xl transition-all transform active:scale-95 shadow-lg shadow-amber-500/20 flex items-center justify-center gap-3"
+                                >
+                                    <span class="text-xl">🎯</span>
+                                    <span>Пройти квиз</span>
+                                    <span
+                                        class="bg-black/20 px-2 py-0.5 rounded text-xs ml-auto"
+                                        >+{currentQuizzes.reduce(
+                                            (acc, q) => acc + q.reward_xp,
+                                            0,
+                                        )} XP</span
+                                    >
+                                </button>
+                            {/if}
                         </div>
                     </div>
                 {:else}
@@ -551,5 +581,14 @@
         on:quizComplete={handleQuizComplete}
         on:next={handleNextQuiz}
         on:close={handleCloseQuiz}
+    />
+{/if}
+
+<!-- Verification Modal -->
+{#if showVerificationModal}
+    <VerificationModal
+        {selectedPOI}
+        on:close={() => (showVerificationModal = false)}
+        on:verified={handleVerified}
     />
 {/if}
