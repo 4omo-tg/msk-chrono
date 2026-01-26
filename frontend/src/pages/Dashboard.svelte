@@ -344,12 +344,12 @@
     </nav>
 
     <div class="flex-1 flex overflow-hidden">
-        <!-- Sidebar -->
+        <!-- Sidebar - только если есть активный маршрут -->
+        {#if activeRouteProgress}
         <div
             class="w-96 bg-neutral-800 border-r border-white/10 p-6 overflow-y-auto"
         >
             {#if selectedPOI}
-                {#if activeRouteProgress}
                     <div
                         class="mb-4 flex items-center justify-between border-b border-white/10 pb-4"
                     >
@@ -547,10 +547,35 @@
                 {/if}
             {/if}
         </div>
+        {/if}
 
         <!-- Map Container -->
         <div class="flex-1 relative bg-neutral-900">
-            <Map on:selectPOI={handlePOISelection} {activeRouteProgress} />
+            {#if activeRouteProgress}
+                <Map on:selectPOI={handlePOISelection} {activeRouteProgress} />
+            {:else}
+                <!-- Пустой стейт вместо карты -->
+                <div class="h-full flex items-center justify-center bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900">
+                    <div class="text-center max-w-md px-8">
+                        <div class="w-32 h-32 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-8 border-2 border-amber-500/20">
+                            <MapIcon size={64} class="text-amber-500/40" />
+                        </div>
+                        <h1 class="text-3xl font-bold text-white mb-4">
+                            Исследуйте Москву
+                        </h1>
+                        <p class="text-gray-400 mb-8 leading-relaxed">
+                            Выберите маршрут и отправляйтесь в путешествие по историческим местам столицы.
+                            Посещайте точки, узнавайте историю и зарабатывайте опыт!
+                        </p>
+                        <a
+                            href="#/routes"
+                            class="inline-block py-4 px-12 bg-amber-500 hover:bg-amber-600 rounded-xl text-black font-bold text-lg transition-all transform active:scale-95 shadow-xl shadow-amber-500/30"
+                        >
+                            Выбрать маршрут
+                        </a>
+                    </div>
+                </div>
+            {/if}
 
             {#if showReward}
                 <div

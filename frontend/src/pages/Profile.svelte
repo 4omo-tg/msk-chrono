@@ -2,11 +2,23 @@
     import { API_BASE } from "../lib/config";
     import { push } from "svelte-spa-router";
     import { onMount } from "svelte";
-    import { User } from "lucide-svelte";
+    import { User, Award, MapPin, Route, Star, Trophy, Target, Compass } from "lucide-svelte";
 
     let user: any = null;
     let completedRoutes = 0;
     let totalPointsVisited = 0;
+
+    // Ачивки
+    const achievements = [
+        { id: 'first_step', icon: MapPin, title: 'Первый шаг', description: 'Посетите первую точку', condition: (pts: number) => pts >= 1 },
+        { id: 'explorer', icon: Compass, title: 'Исследователь', description: 'Посетите 5 точек', condition: (pts: number) => pts >= 5 },
+        { id: 'pathfinder', icon: Route, title: 'Следопыт', description: 'Завершите первый маршрут', condition: (_: number, routes: number) => routes >= 1 },
+        { id: 'veteran', icon: Star, title: 'Ветеран', description: 'Посетите 10 точек', condition: (pts: number) => pts >= 10 },
+        { id: 'master', icon: Trophy, title: 'Мастер', description: 'Завершите 3 маршрута', condition: (_: number, routes: number) => routes >= 3 },
+        { id: 'legend', icon: Award, title: 'Легенда', description: 'Достигните 5 уровня', condition: (_: number, __: number, level: number) => level >= 5 },
+    ];
+
+    $: unlockedAchievements = achievements.filter(a => a.condition(totalPointsVisited, completedRoutes, currentLevel));
 
     onMount(async () => {
         const token = localStorage.getItem("token");
@@ -107,23 +119,54 @@
                         <h3 class="text-lg font-medium text-white mb-2">
                             Статистика
                         </h3>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-neutral-900 p-4 rounded-lg">
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="bg-neutral-900 p-4 rounded-lg text-center">
                                 <div class="text-2xl font-bold text-amber-500">
                                     {completedRoutes}
                                 </div>
-                                <div class="text-sm text-gray-500">
-                                    Завершенных маршрутов
+                                <div class="text-xs text-gray-500">
+                                    Маршрутов
                                 </div>
                             </div>
-                            <div class="bg-neutral-900 p-4 rounded-lg">
+                            <div class="bg-neutral-900 p-4 rounded-lg text-center">
                                 <div class="text-2xl font-bold text-amber-500">
                                     {totalPointsVisited}
                                 </div>
-                                <div class="text-sm text-gray-500">
-                                    Точек посещено
+                                <div class="text-xs text-gray-500">
+                                    Точек
                                 </div>
                             </div>
+                            <div class="bg-neutral-900 p-4 rounded-lg text-center">
+                                <div class="text-2xl font-bold text-amber-500">
+                                    {unlockedAchievements.length}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    Ачивок
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ачивки -->
+                    <div class="pt-6 border-t border-white/10">
+                        <h3 class="text-lg font-medium text-white mb-4">
+                            Достижения
+                        </h3>
+                        <div class="grid grid-cols-3 gap-3">
+                            {#each achievements as achievement}
+                                {@const unlocked = achievement.condition(totalPointsVisited, completedRoutes, currentLevel)}
+                                <div 
+                                    class="p-3 rounded-lg text-center transition-all {unlocked ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-neutral-900/50 border border-white/5 opacity-40'}"
+                                    title={achievement.description}
+                                >
+                                    <div class="w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center {unlocked ? 'bg-amber-500/20 text-amber-500' : 'bg-neutral-800 text-gray-600'}">
+                                        <svelte:component this={achievement.icon} size={20} />
+                                    </div>
+                                    <div class="text-xs font-medium {unlocked ? 'text-white' : 'text-gray-500'}">
+                                        {achievement.title}
+                                    </div>
+                                </div>
+                            {/each}
                         </div>
                     </div>
 
