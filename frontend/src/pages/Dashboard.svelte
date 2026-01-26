@@ -23,6 +23,10 @@
     let activeRouteProgress: any = null;
     let showReward: boolean = false;
     let lastReward: number = 0;
+    
+    // Achievement notification
+    let showAchievement: boolean = false;
+    let newAchievements: any[] = [];
     let loading = true;
     let totalPoints = 0;
     let allRoutes: any[] = [];
@@ -128,6 +132,14 @@
                 userLevel = result.new_level;
                 lastReward = result.xp_gained;
                 showReward = true;
+                
+                // Check for new achievements
+                if (result.new_achievements && result.new_achievements.length > 0) {
+                    newAchievements = result.new_achievements;
+                    setTimeout(() => {
+                        showAchievement = true;
+                    }, 2000); // Show after XP notification
+                }
 
                 // Force reload of progress to ensure consistency
                 const progressResponse = await fetch(
@@ -161,7 +173,16 @@
                 // Clear selectedPOI to allow selecting next POI
                 selectedPOI = null;
 
-                setTimeout(() => (showReward = false), 3000);
+                setTimeout(() => {
+                    showReward = false;
+                    // Hide achievement after some time
+                    if (showAchievement) {
+                        setTimeout(() => {
+                            showAchievement = false;
+                            newAchievements = [];
+                        }, 4000);
+                    }
+                }, 3000);
             }
         } catch (e) {
             console.error("Check-in failed", e);
@@ -513,6 +534,29 @@
                         <span>✨</span>
                         <span>+{lastReward} XP</span>
                         <span class="text-xs opacity-70">История оживает!</span>
+                    </div>
+                </div>
+            {/if}
+            
+            {#if showAchievement && newAchievements.length > 0}
+                <div
+                    class="absolute top-24 left-1/2 -translate-x-1/2 z-[100]"
+                >
+                    <div
+                        class="bg-gradient-to-r from-amber-600 to-amber-500 text-white px-6 py-3 rounded-xl font-bold shadow-2xl border-2 border-amber-400"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">🏆</span>
+                            <div>
+                                <div class="text-sm opacity-80">Новое достижение!</div>
+                                {#each newAchievements as ach}
+                                    <div class="text-lg">{ach.title}</div>
+                                    {#if ach.xp_reward > 0}
+                                        <div class="text-xs opacity-80">+{ach.xp_reward} XP</div>
+                                    {/if}
+                                {/each}
+                            </div>
+                        </div>
                     </div>
                 </div>
             {/if}

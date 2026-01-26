@@ -32,3 +32,4 @@ class CheckInResponse(BaseModel):
     xp_gained: float
     new_total_xp: float
     new_level: int
+    new_achievements: list = []  # List of newly unlocked achievements

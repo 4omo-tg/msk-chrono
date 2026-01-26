@@ -7,18 +7,39 @@
     let user: any = null;
     let completedRoutes = 0;
     let totalPointsVisited = 0;
-
-    // Ачивки
-    const achievements = [
-        { id: 'first_step', icon: MapPin, title: 'Первый шаг', description: 'Посетите первую точку', condition: (pts: number) => pts >= 1 },
-        { id: 'explorer', icon: Compass, title: 'Исследователь', description: 'Посетите 5 точек', condition: (pts: number) => pts >= 5 },
-        { id: 'pathfinder', icon: Route, title: 'Следопыт', description: 'Завершите первый маршрут', condition: (_: number, routes: number) => routes >= 1 },
-        { id: 'veteran', icon: Star, title: 'Ветеран', description: 'Посетите 10 точек', condition: (pts: number) => pts >= 10 },
-        { id: 'master', icon: Trophy, title: 'Мастер', description: 'Завершите 3 маршрута', condition: (_: number, routes: number) => routes >= 3 },
-        { id: 'legend', icon: Award, title: 'Легенда', description: 'Достигните 5 уровня', condition: (_: number, __: number, level: number) => level >= 5 },
-    ];
-
-    $: unlockedAchievements = achievements.filter(a => a.condition(totalPointsVisited, completedRoutes, currentLevel));
+    
+    // Ачивки с сервера
+    interface AchievementData {
+        id: number;
+        code: string;
+        title: string;
+        description: string;
+        icon: string;
+        xp_reward: number;
+        condition_type: string;
+        condition_value: number;
+        unlocked: boolean;
+        unlocked_at: string | null;
+    }
+    
+    let achievements: AchievementData[] = [];
+    
+    // Маппинг иконок
+    const iconMap: Record<string, any> = {
+        'MapPin': MapPin,
+        'Compass': Compass,
+        'Route': Route,
+        'Star': Star,
+        'Trophy': Trophy,
+        'Award': Award,
+        'Target': Target,
+    };
+    
+    function getIcon(iconName: string) {
+        return iconMap[iconName] || Award;
+    }
+    
+    $: unlockedAchievements = achievements.filter(a => a.unlocked);
 
     onMount(async () => {
         const token = localStorage.getItem("token");
@@ -59,6 +80,17 @@
                 completedRoutes = progressData.filter(
                     (p: any) => p.status === "completed",
                 ).length;
+            }
+            
+            // 3. Get Achievements from server
+            const achievementsRes = await fetch(
+                `${API_BASE}/api/v1/achievements/`,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                },
+            );
+            if (achievementsRes.ok) {
+                achievements = await achievementsRes.json();
             }
         } catch (e) {
             console.error("Failed to load profile", e);
@@ -154,17 +186,21 @@
                         </h3>
                         <div class="grid grid-cols-3 gap-3">
                             {#each achievements as achievement}
-                                {@const unlocked = achievement.condition(totalPointsVisited, completedRoutes, currentLevel)}
                                 <div 
-                                    class="p-3 rounded-lg text-center transition-all {unlocked ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-neutral-900/50 border border-white/5 opacity-40'}"
-                                    title={achievement.description}
+                                    class="p-3 rounded-lg text-center transition-all {achievement.unlocked ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-neutral-900/50 border border-white/5 opacity-40'}"
+                                    title="{achievement.description}{achievement.xp_reward > 0 ? ` (+${achievement.xp_reward} XP)` : ''}"
                                 >
-                                    <div class="w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center {unlocked ? 'bg-amber-500/20 text-amber-500' : 'bg-neutral-800 text-gray-600'}">
-                                        <svelte:component this={achievement.icon} size={20} />
+                                    <div class="w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center {achievement.unlocked ? 'bg-amber-500/20 text-amber-500' : 'bg-neutral-800 text-gray-600'}">
+                                        <svelte:component this={getIcon(achievement.icon)} size={20} />
                                     </div>
-                                    <div class="text-xs font-medium {unlocked ? 'text-white' : 'text-gray-500'}">
+                                    <div class="text-xs font-medium {achievement.unlocked ? 'text-white' : 'text-gray-500'}">
                                         {achievement.title}
                                     </div>
+                                    {#if achievement.xp_reward > 0}
+                                        <div class="text-[10px] mt-1 {achievement.unlocked ? 'text-amber-400' : 'text-gray-600'}">
+                                            +{achievement.xp_reward} XP
+                                        </div>
+                                    {/if}
                                 </div>
                             {/each}
                         </div>

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models, schemas
 from app.api import deps
+from app.api.v1.endpoints.achievements import check_and_award_achievements
 
 router = APIRouter()
 
@@ -198,9 +199,34 @@ async def check_in(
     await db.refresh(progress)
     await db.refresh(current_user)
     
+    # Check for new achievements
+    # Get updated stats
+    result = await db.execute(
+        select(models.UserProgress)
+        .where(models.UserProgress.user_id == current_user.id)
+    )
+    all_progress = result.scalars().all()
+    total_points = sum(p.completed_points_count for p in all_progress)
+    completed_routes = sum(1 for p in all_progress if p.status == 'completed')
+    
+    new_achievements = await check_and_award_achievements(
+        db, current_user, total_points, completed_routes
+    )
+    
+    # Add achievement XP to response
+    achievement_xp = sum(a.xp_reward for a in new_achievements)
+    
     return {
         "updated_progress": progress,
-        "xp_gained": xp_to_add + bonus_xp,
+        "xp_gained": xp_to_add + bonus_xp + achievement_xp,
         "new_total_xp": current_user.xp,
-        "new_level": current_user.level
+        "new_level": current_user.level,
+        "new_achievements": [{
+            "id": a.id,
+            "code": a.code,
+            "title": a.title,
+            "description": a.description,
+            "icon": a.icon,
+            "xp_reward": a.xp_reward
+        } for a in new_achievements]
     }

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, Float
+from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 
 class User(Base):
@@ -13,3 +14,6 @@ class User(Base):
     level = Column(Integer, default=1)
     xp = Column(Float, default=0.0)
     bio = Column(String, nullable=True)
+    
+    # Relationships
+    achievements = relationship("UserAchievement", back_populates="user")
