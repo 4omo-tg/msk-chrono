@@ -28,6 +28,7 @@
 
     // Quiz state
     let showQuiz: boolean = false;
+    let showHistoricPhoto: boolean = true;
     let currentQuizzes: any[] = [];
     let currentQuizIndex: number = 0;
 
@@ -390,36 +391,53 @@
                             </div>
 
                             {#if selectedPOI.historic_image_url || selectedPOI.modern_image_url}
-                                <div class="space-y-4">
-                                    {#if selectedPOI.historic_image_url}
-                                        <div class="relative group">
+                                <div class="relative">
+                                    <!-- Табы для переключения -->
+                                    <div class="flex mb-2 bg-neutral-900 rounded-lg p-1">
+                                        {#if selectedPOI.historic_image_url}
+                                            <button
+                                                on:click={() => showHistoricPhoto = true}
+                                                class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5
+                                                    {showHistoricPhoto ? 'bg-neutral-700 text-white' : 'text-gray-400 hover:text-white'}"
+                                            >
+                                                <Clock size={14} />
+                                                Тогда
+                                            </button>
+                                        {/if}
+                                        {#if selectedPOI.modern_image_url}
+                                            <button
+                                                on:click={() => showHistoricPhoto = false}
+                                                class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5
+                                                    {!showHistoricPhoto ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}"
+                                            >
+                                                <Camera size={14} />
+                                                Сейчас
+                                            </button>
+                                        {/if}
+                                    </div>
+                                    
+                                    <!-- Фото -->
+                                    <div class="relative overflow-hidden rounded-lg border border-white/10">
+                                        {#if showHistoricPhoto && selectedPOI.historic_image_url}
                                             <img
                                                 src={selectedPOI.historic_image_url}
-                                                alt="История"
-                                                class="w-full h-48 object-cover rounded-lg border border-white/10"
+                                                alt="Историческое фото"
+                                                class="w-full h-56 object-cover"
                                             />
-                                            <div
-                                                class="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-xs flex items-center gap-1"
-                                            >
-                                                <Clock size={12} /> История
+                                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                                <span class="text-xs text-gray-300">Историческое фото</span>
                                             </div>
-                                        </div>
-                                    {/if}
-
-                                    {#if selectedPOI.modern_image_url}
-                                        <div class="relative group">
+                                        {:else if selectedPOI.modern_image_url}
                                             <img
                                                 src={selectedPOI.modern_image_url}
-                                                alt="Современность"
-                                                class="w-full h-48 object-cover rounded-lg border border-white/10"
+                                                alt="Современное фото"
+                                                class="w-full h-56 object-cover"
                                             />
-                                            <div
-                                                class="absolute bottom-2 left-2 bg-amber-500/80 backdrop-blur-md px-2 py-1 rounded text-xs text-black font-bold flex items-center gap-1"
-                                            >
-                                                <Camera size={12} /> Сейчас
+                                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                                <span class="text-xs text-amber-400">Современный вид</span>
                                             </div>
-                                        </div>
-                                    {/if}
+                                        {/if}
+                                    </div>
                                 </div>
                             {/if}
 
