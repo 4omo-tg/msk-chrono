@@ -90,6 +90,47 @@
             startingRouteId = null;
         }
     }
+
+    let resettingRouteId: number | null = null;
+
+    async function resetRoute(routeId: number) {
+        if (!confirm("Сбросить прогресс маршрута? Все данные будут потеряны.")) {
+            return;
+        }
+
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const progress = progressMap[routeId];
+        if (!progress) return;
+
+        resettingRouteId = routeId;
+
+        try {
+            const response = await fetch(
+                `${API_BASE}/api/v1/progress/${progress.id}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (response.ok) {
+                // Remove from local state
+                delete progressMap[routeId];
+                progressMap = { ...progressMap };
+            } else {
+                alert("Не удалось сбросить маршрут");
+            }
+        } catch (e) {
+            console.error("Failed to reset route", e);
+            alert("Ошибка при сбросе маршрута");
+        } finally {
+            resettingRouteId = null;
+        }
+    }
 </script>
 
 <div class="min-h-screen bg-neutral-900 text-white p-8">
@@ -189,12 +230,21 @@
                                     ✓ Маршрут пройден
                                 </button>
                             {:else if progressMap[route.id]?.status === "started"}
-                                <button
-                                    on:click={() => push("/dashboard")}
-                                    class="w-full mt-6 bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 px-4 rounded-lg transition-all transform active:scale-95 shadow-lg shadow-amber-500/10"
-                                >
-                                    Продолжить
-                                </button>
+                                <div class="mt-6 space-y-2">
+                                    <button
+                                        on:click={() => push("/dashboard")}
+                                        class="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 px-4 rounded-lg transition-all transform active:scale-95 shadow-lg shadow-amber-500/10"
+                                    >
+                                        Продолжить ({progressMap[route.id].completed_points_count}/{route.points?.length || '?'})
+                                    </button>
+                                    <button
+                                        on:click={() => resetRoute(route.id)}
+                                        disabled={resettingRouteId === route.id}
+                                        class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 font-medium py-2 px-4 rounded-lg transition-all border border-red-500/20 text-sm"
+                                    >
+                                        {resettingRouteId === route.id ? "Сброс..." : "Сбросить прогресс"}
+                                    </button>
+                                </div>
                             {:else}
                                 <button
                                     on:click={() => startRoute(route.id)}

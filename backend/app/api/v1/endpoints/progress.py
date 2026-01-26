@@ -58,6 +58,27 @@ async def create_progress(
     await db.refresh(progress)
     return progress
 
+@router.delete("/{progress_id}", response_model=schemas.UserProgress)
+async def delete_progress(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    progress_id: int,
+    current_user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Delete/Reset progress for a route.
+    """
+    progress = await db.get(models.UserProgress, progress_id)
+    if not progress:
+        raise HTTPException(status_code=404, detail="Progress not found")
+    if progress.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    await db.delete(progress)
+    await db.commit()
+    return progress
+
+
 @router.put("/{progress_id}", response_model=schemas.UserProgress)
 async def update_progress(
     *,
