@@ -11,6 +11,23 @@ from app.api import deps
 
 router = APIRouter()
 
+
+def poi_to_schema(p: models.PointOfInterest) -> schemas.PointOfInterest:
+    """Convert POI model to schema with all fields."""
+    return schemas.PointOfInterest(
+        id=p.id,
+        title=p.title,
+        description=p.description,
+        historic_image_url=p.historic_image_url,
+        modern_image_url=p.modern_image_url,
+        historic_images=p.historic_images or [],
+        modern_images=p.modern_images or [],
+        historic_panorama_url=p.historic_panorama_url,
+        modern_panorama_url=p.modern_panorama_url,
+        latitude=p.latitude,
+        longitude=p.longitude
+    )
+
 @router.get("/", response_model=List[schemas.Route])
 async def read_routes(
     db: AsyncSession = Depends(deps.get_db),
@@ -32,19 +49,7 @@ async def read_routes(
     # We need to map the POIs inside to schema POIs with lat/lon
     route_schemas = []
     for r in routes:
-        points_schema = []
-        for p in r.points:
-            points_schema.append(
-                 schemas.PointOfInterest(
-                    id=p.id,
-                    title=p.title,
-                    description=p.description,
-                    historic_image_url=p.historic_image_url,
-                    modern_image_url=p.modern_image_url,
-                    latitude=p.latitude,
-                    longitude=p.longitude
-                )
-            )
+        points_schema = [poi_to_schema(p) for p in r.points]
             
         route_schemas.append(
             schemas.Route(
@@ -95,19 +100,7 @@ async def create_route(
     await db.commit()
     await db.refresh(route, attribute_names=['points']) # refresh relationships
     
-    points_schema = []
-    for p in route.points:
-        points_schema.append(
-             schemas.PointOfInterest(
-                id=p.id,
-                title=p.title,
-                description=p.description,
-                historic_image_url=p.historic_image_url,
-                modern_image_url=p.modern_image_url,
-                latitude=p.latitude,
-                longitude=p.longitude
-            )
-        )
+    points_schema = [poi_to_schema(p) for p in route.points]
 
     return schemas.Route(
         id=route.id,
@@ -137,19 +130,7 @@ async def read_route(
     if not route:
         raise HTTPException(status_code=404, detail="Route not found")
 
-    points_schema = []
-    for p in route.points:
-        points_schema.append(
-             schemas.PointOfInterest(
-                id=p.id,
-                title=p.title,
-                description=p.description,
-                historic_image_url=p.historic_image_url,
-                modern_image_url=p.modern_image_url,
-                latitude=p.latitude,
-                longitude=p.longitude
-            )
-        )
+    points_schema = [poi_to_schema(p) for p in route.points]
 
     return schemas.Route(
         id=route.id,
@@ -211,19 +192,7 @@ async def update_route(
     await db.commit()
     await db.refresh(route, attribute_names=['points'])
     
-    points_schema = []
-    for p in route.points:
-        points_schema.append(
-             schemas.PointOfInterest(
-                id=p.id,
-                title=p.title,
-                description=p.description,
-                historic_image_url=p.historic_image_url,
-                modern_image_url=p.modern_image_url,
-                latitude=p.latitude,
-                longitude=p.longitude
-            )
-        )
+    points_schema = [poi_to_schema(p) for p in route.points]
 
     return schemas.Route(
         id=route.id,
@@ -255,19 +224,7 @@ async def delete_route(
     if not route:
         raise HTTPException(status_code=404, detail="Route not found")
 
-    points_schema = []
-    for p in route.points:
-        points_schema.append(
-             schemas.PointOfInterest(
-                id=p.id,
-                title=p.title,
-                description=p.description,
-                historic_image_url=p.historic_image_url,
-                modern_image_url=p.modern_image_url,
-                latitude=p.latitude,
-                longitude=p.longitude
-            )
-        )
+    points_schema = [poi_to_schema(p) for p in route.points]
     
     route_schema = schemas.Route(
         id=route.id,

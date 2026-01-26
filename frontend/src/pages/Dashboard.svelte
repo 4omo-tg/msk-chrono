@@ -6,6 +6,7 @@
     import QuizModal from "../components/QuizModal.svelte";
     import VerificationModal from "../components/VerificationModal.svelte";
     import OnboardingModal from "../components/OnboardingModal.svelte";
+    import PhotoGallery from "../components/PhotoGallery.svelte";
     import {
         User,
         LogOut,
@@ -28,9 +29,6 @@
 
     // Quiz state
     let showQuiz: boolean = false;
-    let showHistoricPhoto: boolean = true;
-    let showPhotoModal: boolean = false;
-    let photoModalSrc: string = "";
     let currentQuizzes: any[] = [];
     let currentQuizIndex: number = 0;
 
@@ -39,16 +37,6 @@
         if (!quizzes || quizzes.length === 0) return 0;
         const total = quizzes.reduce((acc, q) => acc + (Number(q.xp_reward) || 0), 0);
         return isNaN(total) ? 0 : total;
-    }
-
-    function openPhotoModal(src: string) {
-        photoModalSrc = src;
-        showPhotoModal = true;
-    }
-
-    function closePhotoModal() {
-        showPhotoModal = false;
-        photoModalSrc = "";
     }
 
     // Verification state
@@ -409,78 +397,8 @@
                                 </button>
                             </div>
 
-                            {#if selectedPOI.historic_image_url || selectedPOI.modern_image_url}
-                                <div class="relative">
-                                    <!-- Табы для переключения -->
-                                    <div class="flex mb-2 bg-neutral-900 rounded-lg p-1">
-                                        {#if selectedPOI.historic_image_url}
-                                            <button
-                                                on:click={() => showHistoricPhoto = true}
-                                                class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5
-                                                    {showHistoricPhoto ? 'bg-neutral-700 text-white' : 'text-gray-400 hover:text-white'}"
-                                            >
-                                                <Clock size={14} />
-                                                Тогда
-                                            </button>
-                                        {/if}
-                                        {#if selectedPOI.modern_image_url}
-                                            <button
-                                                on:click={() => showHistoricPhoto = false}
-                                                class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5
-                                                    {!showHistoricPhoto ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}"
-                                            >
-                                                <Camera size={14} />
-                                                Сейчас
-                                            </button>
-                                        {/if}
-                                    </div>
-                                    
-                                    <!-- Фото с возможностью увеличения -->
-                                    <div 
-                                        class="relative overflow-hidden rounded-lg border border-white/10 cursor-pointer group"
-                                        on:click={() => {
-                                            const src = showHistoricPhoto && selectedPOI.historic_image_url 
-                                                ? selectedPOI.historic_image_url 
-                                                : selectedPOI.modern_image_url;
-                                            if (src) openPhotoModal(src);
-                                        }}
-                                        on:keydown={(e) => e.key === 'Enter' && openPhotoModal(showHistoricPhoto ? selectedPOI.historic_image_url : selectedPOI.modern_image_url)}
-                                        role="button"
-                                        tabindex="0"
-                                    >
-                                        {#if showHistoricPhoto && selectedPOI.historic_image_url}
-                                            <img
-                                                src={selectedPOI.historic_image_url}
-                                                alt="Историческое фото"
-                                                class="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
-                                            />
-                                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                                                <span class="text-xs text-gray-300">Историческое фото • Нажмите для увеличения</span>
-                                            </div>
-                                        {:else if selectedPOI.modern_image_url}
-                                            <img
-                                                src={selectedPOI.modern_image_url}
-                                                alt="Современное фото"
-                                                class="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
-                                            />
-                                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                                                <span class="text-xs text-amber-400">Современный вид • Нажмите для увеличения</span>
-                                            </div>
-                                        {/if}
-                                        <!-- Overlay icon -->
-                                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                            <div class="bg-white/20 backdrop-blur-sm rounded-full p-3">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white">
-                                                    <circle cx="11" cy="11" r="8"></circle>
-                                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                                    <line x1="11" y1="8" x2="11" y2="14"></line>
-                                                    <line x1="8" y1="11" x2="14" y2="11"></line>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            {/if}
+                            <!-- Photo Gallery Component -->
+                            <PhotoGallery poi={selectedPOI} />
 
                             <div
                                 class="bg-white/5 p-4 rounded-xl border border-white/5"
@@ -662,52 +580,4 @@
     <OnboardingModal on:complete={() => showOnboarding = false} />
 {/if}
 
-<!-- Photo Gallery Modal -->
-{#if showPhotoModal && photoModalSrc}
-    <div 
-        class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
-        on:click={closePhotoModal}
-        on:keydown={(e) => e.key === 'Escape' && closePhotoModal()}
-        role="dialog"
-        tabindex="-1"
-    >
-        <button 
-            class="absolute top-4 right-4 text-white/70 hover:text-white z-10 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
-            on:click={closePhotoModal}
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
-        
-        <!-- Navigation between photos -->
-        {#if selectedPOI?.historic_image_url && selectedPOI?.modern_image_url}
-            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                <button 
-                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2
-                        {photoModalSrc === selectedPOI.historic_image_url ? 'bg-white text-black' : 'bg-white/20 text-white hover:bg-white/30'}"
-                    on:click|stopPropagation={() => photoModalSrc = selectedPOI.historic_image_url}
-                >
-                    <Clock size={16} />
-                    Тогда
-                </button>
-                <button 
-                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2
-                        {photoModalSrc === selectedPOI.modern_image_url ? 'bg-amber-500 text-black' : 'bg-white/20 text-white hover:bg-white/30'}"
-                    on:click|stopPropagation={() => photoModalSrc = selectedPOI.modern_image_url}
-                >
-                    <Camera size={16} />
-                    Сейчас
-                </button>
-            </div>
-        {/if}
-        
-        <img 
-            src={photoModalSrc} 
-            alt="Фото" 
-            class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-            on:click|stopPropagation
-        />
-    </div>
-{/if}
+
