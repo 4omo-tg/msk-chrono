@@ -27,7 +27,7 @@ class FriendRequestOut(BaseModel):
     to_user_level: Optional[int] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class FriendOut(BaseModel):
@@ -46,7 +46,7 @@ class FriendOut(BaseModel):
     friend_is_online: bool = False  # TODO: implement online status
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class FriendshipUpdate(BaseModel):

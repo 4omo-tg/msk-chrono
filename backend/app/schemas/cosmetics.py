@@ -21,7 +21,7 @@ class TitleOut(TitleBase):
     unlocked_at: Optional[datetime] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Frame schemas
@@ -43,7 +43,7 @@ class FrameOut(FrameBase):
     unlocked_at: Optional[datetime] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Badge schemas
@@ -65,7 +65,7 @@ class BadgeOut(BadgeBase):
     unlocked_at: Optional[datetime] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Equip request

@@ -51,7 +51,7 @@ async def get_my_profile(
                 badges_result = await db.execute(
                     select(models.Badge).where(models.Badge.id.in_(badge_ids))
                 )
-                equipped_badges = [schemas.BadgeOut.from_orm(b) for b in badges_result.scalars().all()]
+                equipped_badges = [schemas.BadgeOut.model_validate(b) for b in badges_result.scalars().all()]
         except:
             pass
     
@@ -75,8 +75,8 @@ async def get_my_profile(
         equipped_title_id=user.equipped_title_id,
         equipped_frame_id=user.equipped_frame_id,
         equipped_badge_ids=user.equipped_badge_ids,
-        equipped_title=schemas.TitleOut.from_orm(user.equipped_title) if user.equipped_title else None,
-        equipped_frame=schemas.FrameOut.from_orm(user.equipped_frame) if user.equipped_frame else None,
+        equipped_title=schemas.TitleOut.model_validate(user.equipped_title) if user.equipped_title else None,
+        equipped_frame=schemas.FrameOut.model_validate(user.equipped_frame) if user.equipped_frame else None,
         equipped_badges=equipped_badges,
         unlocked_titles_count=len(user.unlocked_titles),
         unlocked_frames_count=len(user.unlocked_frames),
@@ -287,7 +287,7 @@ async def get_user_profile(
                 badges_result = await db.execute(
                     select(models.Badge).where(models.Badge.id.in_(badge_ids))
                 )
-                equipped_badges = [schemas.BadgeOut.from_orm(b) for b in badges_result.scalars().all()]
+                equipped_badges = [schemas.BadgeOut.model_validate(b) for b in badges_result.scalars().all()]
         except:
             pass
     
@@ -301,8 +301,8 @@ async def get_user_profile(
         xp=user.xp,
         reputation=user.reputation or 0,
         profile_background=user.profile_background,
-        equipped_title=schemas.TitleOut.from_orm(user.equipped_title) if user.equipped_title else None,
-        equipped_frame=schemas.FrameOut.from_orm(user.equipped_frame) if user.equipped_frame else None,
+        equipped_title=schemas.TitleOut.model_validate(user.equipped_title) if user.equipped_title else None,
+        equipped_frame=schemas.FrameOut.model_validate(user.equipped_frame) if user.equipped_frame else None,
         equipped_badges=equipped_badges,
         achievements_count=len(user.achievements),
         friends_count=friends_count or 0,
@@ -351,8 +351,8 @@ async def search_users(
             display_name=u.display_name,
             avatar_url=u.avatar_url,
             level=u.level,
-            equipped_title=schemas.TitleOut.from_orm(u.equipped_title) if u.equipped_title else None,
-            equipped_frame=schemas.FrameOut.from_orm(u.equipped_frame) if u.equipped_frame else None,
+            equipped_title=schemas.TitleOut.model_validate(u.equipped_title) if u.equipped_title else None,
+            equipped_frame=schemas.FrameOut.model_validate(u.equipped_frame) if u.equipped_frame else None,
             is_friend=u.id in friend_ids,
         )
         for u in users

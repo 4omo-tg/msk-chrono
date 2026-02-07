@@ -58,7 +58,7 @@ class UserInDBBase(UserBase):
     telegram_photo_url: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Title schema
@@ -71,7 +71,7 @@ class TitleOut(BaseModel):
     rarity: str
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Frame schema
@@ -85,7 +85,7 @@ class FrameOut(BaseModel):
     rarity: str
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Badge schema
@@ -99,7 +99,7 @@ class BadgeOut(BaseModel):
     rarity: str
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Additional properties to return via API
@@ -159,7 +159,7 @@ class PublicProfile(BaseModel):
     friend_request_received: bool = False
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # User search result
@@ -174,7 +174,7 @@ class UserSearchResult(BaseModel):
     is_friend: bool = False
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Additional properties stored in DB
