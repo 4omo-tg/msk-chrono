@@ -133,15 +133,17 @@ async def verify_poi(
 Проверь фото пользователя:
 - Название места: {poi.title}
 - Описание: {poi.description or 'не указано'}
-- Требуемый жест: {gesture_info['name']}
+- Требуемый жест: {gesture_info['name']} ({gesture_info['description']})
 
 Проверь:
 1. Видна ли достопримечательность "{poi.title}" на фото?
-2. Виден ли жест {gesture_info['name']}?
+2. Виден ли требуемый жест {gesture_info['name']} на фото?
 
 Отвечай строго в формате:
 РЕЗУЛЬТАТ: YES или NO
-КОММЕНТАРИЙ: краткое пояснение"""
+МЕСТО: да/нет - видна ли достопримечательность и почему
+ЖЕСТ: да/нет - виден ли требуемый жест
+ПРИЧИНА: если NO - подробно объясни что не так и что нужно исправить"""
                 
                 # Use native /api/chat format with image
                 payload = {
@@ -166,22 +168,44 @@ async def verify_poi(
                 
                 # Parse response
                 response_upper = response_content.upper()
-                verified = "РЕЗУЛЬТАТ: YES" in response_upper or "РЕЗУЛЬТАТ:YES" in response_upper or "YES" in response_upper.split("\n")[0]
+                verified = "РЕЗУЛЬТАТ: YES" in response_upper or "РЕЗУЛЬТАТ:YES" in response_upper
                 
-                # Extract comment
+                # Extract detailed info
                 lines = response_content.split("\n")
-                comment = ""
-                for line in lines:
-                    if "КОММЕНТАРИЙ:" in line.upper():
-                        comment = line.split(":", 1)[-1].strip()
-                        break
+                place_ok = None
+                gesture_ok = None
+                reason = ""
                 
-                if not comment:
-                    comment = response_content[:200] if len(response_content) > 200 else response_content
+                for line in lines:
+                    line_upper = line.upper()
+                    if "МЕСТО:" in line_upper:
+                        place_ok = "ДА" in line_upper.split(":", 1)[-1]
+                    elif "ЖЕСТ:" in line_upper:
+                        gesture_ok = "ДА" in line_upper.split(":", 1)[-1]
+                    elif "ПРИЧИНА:" in line_upper:
+                        reason = line.split(":", 1)[-1].strip()
+                
+                # Build user-friendly message
+                if verified:
+                    message = "Верификация успешна! Место и жест подтверждены."
+                else:
+                    # Build detailed rejection reason
+                    issues = []
+                    if place_ok == False:
+                        issues.append("Достопримечательность не распознана на фото")
+                    if gesture_ok == False:
+                        issues.append(f"Требуемый жест '{gesture_info['name']}' не обнаружен")
+                    
+                    if reason:
+                        message = reason
+                    elif issues:
+                        message = ". ".join(issues) + "."
+                    else:
+                        message = "Верификация не пройдена. Попробуйте сделать фото чётче."
                 
                 return schemas.VerificationResponse(
                     verified=verified,
-                    message=comment if comment else ("Верификация успешна!" if verified else "Верификация не пройдена")
+                    message=message
                 )
 
             except httpx.HTTPError as he:
