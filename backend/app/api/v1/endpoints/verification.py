@@ -166,24 +166,34 @@ async def verify_poi(
                 if not response_content and "choices" in data:
                     response_content = data["choices"][0]["message"]["content"]
                 
+                print(f"AI Response: {response_content}")  # Debug log
+                
                 # Parse response
                 response_upper = response_content.upper()
-                verified = "РЕЗУЛЬТАТ: YES" in response_upper or "РЕЗУЛЬТАТ:YES" in response_upper
+                verified = "РЕЗУЛЬТАТ: YES" in response_upper or "РЕЗУЛЬТАТ:YES" in response_upper or ("YES" in response_upper and "NO" not in response_upper.split("\n")[0])
                 
                 # Extract detailed info
                 lines = response_content.split("\n")
                 place_ok = None
                 gesture_ok = None
                 reason = ""
+                place_comment = ""
+                gesture_comment = ""
                 
                 for line in lines:
-                    line_upper = line.upper()
-                    if "МЕСТО:" in line_upper:
-                        place_ok = "ДА" in line_upper.split(":", 1)[-1]
-                    elif "ЖЕСТ:" in line_upper:
-                        gesture_ok = "ДА" in line_upper.split(":", 1)[-1]
-                    elif "ПРИЧИНА:" in line_upper:
+                    line_upper = line.upper().strip()
+                    if line_upper.startswith("МЕСТО:") or "МЕСТО:" in line_upper:
+                        value = line.split(":", 1)[-1].strip()
+                        place_ok = value.upper().startswith("ДА") or "YES" in value.upper()
+                        place_comment = value
+                    elif line_upper.startswith("ЖЕСТ:") or "ЖЕСТ:" in line_upper:
+                        value = line.split(":", 1)[-1].strip()
+                        gesture_ok = value.upper().startswith("ДА") or "YES" in value.upper()
+                        gesture_comment = value
+                    elif line_upper.startswith("ПРИЧИНА:") or "ПРИЧИНА:" in line_upper:
                         reason = line.split(":", 1)[-1].strip()
+                
+                print(f"Parsed - place_ok: {place_ok}, gesture_ok: {gesture_ok}, reason: {reason}")
                 
                 # Build user-friendly message
                 if verified:
@@ -192,16 +202,23 @@ async def verify_poi(
                     # Build detailed rejection reason
                     issues = []
                     if place_ok == False:
-                        issues.append("Достопримечательность не распознана на фото")
+                        issues.append(f"❌ Достопримечательность не распознана")
+                    elif place_ok == True:
+                        issues.append(f"✅ Достопримечательность определена")
+                    
                     if gesture_ok == False:
-                        issues.append(f"Требуемый жест '{gesture_info['name']}' не обнаружен")
+                        issues.append(f"❌ Жест '{gesture_info['name']}' не обнаружен")
+                    elif gesture_ok == True:
+                        issues.append(f"✅ Жест обнаружен")
                     
                     if reason:
-                        message = reason
-                    elif issues:
-                        message = ". ".join(issues) + "."
+                        issues.append(f"\n📝 {reason}")
+                    
+                    if issues:
+                        message = "\n".join(issues)
                     else:
-                        message = "Верификация не пройдена. Попробуйте сделать фото чётче."
+                        # Fallback - show raw AI response
+                        message = response_content[:300] if len(response_content) > 300 else response_content
                 
                 return schemas.VerificationResponse(
                     verified=verified,
