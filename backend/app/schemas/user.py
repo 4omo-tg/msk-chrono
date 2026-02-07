@@ -1,5 +1,5 @@
-from typing import Optional
-
+from typing import Optional, List
+from datetime import datetime
 from pydantic import BaseModel, EmailStr
 
 
@@ -22,6 +22,21 @@ class UserCreate(UserBase):
 # Properties to receive via API on update
 class UserUpdate(UserBase):
     password: Optional[str] = None
+    display_name: Optional[str] = None
+    profile_visibility: Optional[str] = None
+    show_on_leaderboard: Optional[bool] = None
+
+
+# Profile customization update
+class ProfileUpdate(BaseModel):
+    display_name: Optional[str] = None
+    bio: Optional[str] = None
+    equipped_title_id: Optional[int] = None
+    equipped_frame_id: Optional[int] = None
+    equipped_badge_ids: Optional[List[int]] = None  # Max 3 badges
+    profile_background: Optional[str] = None
+    profile_visibility: Optional[str] = None
+    show_on_leaderboard: Optional[bool] = None
 
 
 # Telegram auth data
@@ -46,10 +61,120 @@ class UserInDBBase(UserBase):
         orm_mode = True
 
 
+# Title schema
+class TitleOut(BaseModel):
+    id: int
+    code: str
+    name: str
+    description: Optional[str]
+    color: str
+    rarity: str
+    
+    class Config:
+        orm_mode = True
+
+
+# Frame schema
+class FrameOut(BaseModel):
+    id: int
+    code: str
+    name: str
+    description: Optional[str]
+    image_url: Optional[str]
+    css_class: Optional[str]
+    rarity: str
+    
+    class Config:
+        orm_mode = True
+
+
+# Badge schema
+class BadgeOut(BaseModel):
+    id: int
+    code: str
+    name: str
+    description: Optional[str]
+    icon: str
+    color: str
+    rarity: str
+    
+    class Config:
+        orm_mode = True
+
+
 # Additional properties to return via API
 class User(UserInDBBase):
     level: int = 1
     xp: float = 0.0
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    profile_background: Optional[str] = None
+    total_distance_km: float = 0.0
+    total_time_minutes: int = 0
+    streak_days: int = 0
+    reputation: int = 0
+    profile_visibility: str = "public"
+    show_on_leaderboard: bool = True
+    created_at: Optional[datetime] = None
+    
+    # Equipped cosmetics
+    equipped_title_id: Optional[int] = None
+    equipped_frame_id: Optional[int] = None
+    equipped_badge_ids: Optional[str] = None
+
+
+# Extended user profile with cosmetics
+class UserProfile(User):
+    equipped_title: Optional[TitleOut] = None
+    equipped_frame: Optional[FrameOut] = None
+    equipped_badges: List[BadgeOut] = []
+    unlocked_titles_count: int = 0
+    unlocked_frames_count: int = 0
+    unlocked_badges_count: int = 0
+    friends_count: int = 0
+    achievements_count: int = 0
+
+
+# Public profile (limited info)
+class PublicProfile(BaseModel):
+    id: int
+    username: str
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    level: int
+    xp: float
+    reputation: int
+    profile_background: Optional[str] = None
+    equipped_title: Optional[TitleOut] = None
+    equipped_frame: Optional[FrameOut] = None
+    equipped_badges: List[BadgeOut] = []
+    achievements_count: int = 0
+    friends_count: int = 0
+    total_distance_km: float = 0.0
+    streak_days: int = 0
+    created_at: Optional[datetime] = None
+    is_friend: bool = False
+    friend_request_sent: bool = False
+    friend_request_received: bool = False
+    
+    class Config:
+        orm_mode = True
+
+
+# User search result
+class UserSearchResult(BaseModel):
+    id: int
+    username: str
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    level: int
+    equipped_title: Optional[TitleOut] = None
+    equipped_frame: Optional[FrameOut] = None
+    is_friend: bool = False
+    
+    class Config:
+        orm_mode = True
 
 
 # Additional properties stored in DB

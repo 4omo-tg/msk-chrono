@@ -6,7 +6,8 @@
     import { 
         User, Award, MapPin, Route, Star, Trophy, Target, Compass,
         Flame, Zap, Crown, Gem, BookOpen, Camera, Clock, Mountain,
-        Footprints, Flag, Medal, Sparkles, X, Lock, Check, Info
+        Footprints, Flag, Medal, Sparkles, X, Lock, Check, Info,
+        Settings, Users, Edit
     } from "lucide-svelte";
 
     let user: any = null;
@@ -140,8 +141,8 @@
         }
 
         try {
-            // 1. Get User Data
-            const userRes = await apiGet("/api/v1/users/me");
+            // 1. Get User Data with profile info
+            const userRes = await apiGet("/api/v1/profile/me");
             if (userRes.ok) {
                 user = await userRes.json();
             }
@@ -187,38 +188,65 @@
     $: displayXp = user && typeof user.xp === 'number' ? Math.floor(user.xp) : 0;
 </script>
 
-<div class="min-h-screen bg-neutral-900 text-white p-8">
+<div class="min-h-screen bg-neutral-900 text-white p-4 sm:p-8">
     <div class="max-w-2xl mx-auto">
-        <div class="flex justify-between items-center mb-8">
+        <div class="flex justify-between items-center mb-6">
             <h1
-                class="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent"
+                class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent"
             >
-                Профиль пользователя
+                Профиль
             </h1>
-            <a
-                href="#/dashboard"
-                class="text-gray-400 hover:text-white transition-colors"
-                >В дашборд</a
-            >
+            <div class="flex gap-2">
+                <a
+                    href="#/friends"
+                    class="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
+                    title="Друзья"
+                >
+                    <Users size={20} />
+                </a>
+                <a
+                    href="#/profile/edit"
+                    class="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
+                    title="Настройки"
+                >
+                    <Settings size={20} />
+                </a>
+                <a
+                    href="#/dashboard"
+                    class="text-gray-400 hover:text-white transition-colors p-2"
+                    >В дашборд</a
+                >
+            </div>
         </div>
 
         {#if user}
             <div
-                class="bg-neutral-800 rounded-xl border border-white/10 p-8 shadow-lg"
+                class="bg-neutral-800 rounded-xl border border-white/10 p-6 shadow-lg"
             >
-                <div class="flex items-center gap-6 mb-8">
-                    <div
-                        class="w-20 h-20 bg-neutral-700 rounded-full flex items-center justify-center text-amber-500"
-                    >
-                        <User size={40} />
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="relative">
+                        <div
+                            class="w-20 h-20 bg-neutral-700 rounded-full flex items-center justify-center overflow-hidden {user.equipped_frame?.css_class || 'ring-2 ring-gray-600'}"
+                        >
+                            {#if user.avatar_url || user.telegram_photo_url}
+                                <img src="{(user.avatar_url || user.telegram_photo_url).startsWith('/') ? API_BASE + (user.avatar_url || user.telegram_photo_url) : (user.avatar_url || user.telegram_photo_url)}" alt="Avatar" class="w-full h-full object-cover" />
+                            {:else}
+                                <User size={40} class="text-amber-500" />
+                            {/if}
+                        </div>
+                        <a href="#/profile/edit" class="absolute -bottom-1 -right-1 p-1.5 bg-amber-500 rounded-full text-black hover:bg-amber-400 transition-colors">
+                            <Edit size={12} />
+                        </a>
                     </div>
-                    <div>
-                        <h2 class="text-2xl font-bold text-white">
-                            {user.username}
+                    <div class="flex-1">
+                        <h2 class="text-xl font-bold text-white">
+                            {user.display_name || user.username}
                         </h2>
-                        <p class="text-gray-400">
-                            Уровень {currentLevel} • {displayXp} / {xpForNextLevel}
-                            XP
+                        {#if user.equipped_title}
+                            <p class="text-sm text-amber-400">{user.equipped_title.name}</p>
+                        {/if}
+                        <p class="text-gray-400 text-sm">
+                            @{user.username} • Ур. {currentLevel} • {displayXp} / {xpForNextLevel} XP
                         </p>
                     </div>
                 </div>

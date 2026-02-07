@@ -74,3 +74,26 @@ export function logout(): void {
     localStorage.removeItem('token');
     window.location.hash = '#/register';
 }
+
+/**
+ * PUT запрос с авторизацией и JSON body
+ */
+export async function apiPut(url: string, data?: any): Promise<Response> {
+    return apiFetch(url, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: data ? JSON.stringify(data) : undefined,
+    });
+}
+
+/**
+ * POST запрос с FormData (для загрузки файлов)
+ */
+export async function apiPostFormData(url: string, formData: FormData): Promise<Response> {
+    return apiFetch(url, {
+        method: 'POST',
+        body: formData,
+    });
+}

@@ -6,6 +6,10 @@
   import Dashboard from "./pages/Dashboard.svelte";
   import Routes from "./pages/Routes.svelte";
   import Profile from "./pages/Profile.svelte";
+  import ProfileEdit from "./pages/ProfileEdit.svelte";
+  import Friends from "./pages/Friends.svelte";
+  import UserProfile from "./pages/UserProfile.svelte";
+  import TelegramCallback from "./pages/TelegramCallback.svelte";
 
   const routes = {
     "/": Home,
@@ -14,6 +18,10 @@
     "/dashboard": Dashboard,
     "/routes": Routes,
     "/profile": Profile,
+    "/profile/edit": ProfileEdit,
+    "/friends": Friends,
+    "/user/:id": UserProfile,
+    "/telegram-callback": TelegramCallback,
   };
 </script>
 
