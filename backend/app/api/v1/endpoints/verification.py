@@ -69,7 +69,10 @@ async def upload_image_to_qwen(image_content: bytes, content_type: str) -> str:
         )
         upload_res.raise_for_status()
         data = upload_res.json()
-        return data.get("imageUrl")
+        # API returns URL in file.url field
+        url = data.get("imageUrl") or data.get("file", {}).get("url")
+        print(f"Uploaded image URL: {url[:100] if url else 'None'}...")
+        return url
 
 
 @router.post("/verify-poi", response_model=schemas.VerificationResponse)
