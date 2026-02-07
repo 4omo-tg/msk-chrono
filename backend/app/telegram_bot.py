@@ -1,16 +1,13 @@
 """Telegram Bot for authentication codes"""
 import asyncio
 import secrets
-import time
-from telegram import Update, Bot
+import psycopg2
+from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from app.core.config import settings
 
-# Store auth codes: {code: {telegram_id, username, first_name, photo_url, created_at}}
-auth_codes: dict = {}
-
-# Clean old codes periodically (older than 10 minutes)
-CODE_EXPIRY = 600  # 10 minutes
+# Database connection string (sync version for bot)
+DB_URL = settings.DATABASE_URL.replace('+asyncpg', '').replace('postgresql+asyncpg', 'postgresql')
 
 
 def generate_code() -> str:
@@ -18,21 +15,38 @@ def generate_code() -> str:
     return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
 
 
-def cleanup_old_codes():
-    """Remove expired codes"""
-    now = time.time()
-    expired = [code for code, data in auth_codes.items() if now - data['created_at'] > CODE_EXPIRY]
-    for code in expired:
-        del auth_codes[code]
+def save_code_to_db(code: str, user_data: dict):
+    """Save auth code to database"""
+    conn = psycopg2.connect(DB_URL)
+    try:
+        cur = conn.cursor()
+        # Clean old codes (older than 10 minutes)
+        cur.execute("DELETE FROM telegram_auth_codes WHERE created_at < NOW() - INTERVAL '10 minutes'")
+        # Insert new code
+        cur.execute("""
+            INSERT INTO telegram_auth_codes (code, telegram_id, telegram_username, telegram_first_name, telegram_photo_url)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (code) DO UPDATE SET
+                telegram_id = EXCLUDED.telegram_id,
+                telegram_username = EXCLUDED.telegram_username,
+                telegram_first_name = EXCLUDED.telegram_first_name,
+                telegram_photo_url = EXCLUDED.telegram_photo_url,
+                created_at = NOW()
+        """, (code, user_data['telegram_id'], user_data['username'], user_data['first_name'], user_data['photo_url']))
+        conn.commit()
+    finally:
+        conn.close()
 
 
-def get_and_consume_code(code: str) -> dict | None:
-    """Get code data and remove it (one-time use)"""
-    cleanup_old_codes()
-    if code in auth_codes:
-        data = auth_codes.pop(code)
-        return data
-    return None
+def code_exists(code: str) -> bool:
+    """Check if code already exists"""
+    conn = psycopg2.connect(DB_URL)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM telegram_auth_codes WHERE code = %s", (code,))
+        return cur.fetchone() is not None
+    finally:
+        conn.close()
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -41,31 +55,33 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Generate unique code
     code = generate_code()
-    while code in auth_codes:
+    attempts = 0
+    while code_exists(code) and attempts < 10:
         code = generate_code()
+        attempts += 1
     
     # Get user photo URL
     photo_url = None
     try:
         photos = await user.get_profile_photos(limit=1)
         if photos.total_count > 0:
-            photo = photos.photos[0][-1]  # Get largest size
+            photo = photos.photos[0][-1]
             file = await context.bot.get_file(photo.file_id)
             photo_url = file.file_path
     except Exception:
         pass
     
-    # Store code with user data
-    auth_codes[code] = {
+    # Save code to database
+    user_data = {
         'telegram_id': user.id,
         'username': user.username,
         'first_name': user.first_name,
         'photo_url': photo_url,
-        'created_at': time.time()
     }
+    save_code_to_db(code, user_data)
     
     await update.message.reply_text(
-        f"🔐 Ваш код для входа на сайт:\n\n"
+        f"\U0001F510 Ваш код для входа на сайт:\n\n"
         f"<code>{code}</code>\n\n"
         f"Введите этот код на сайте для авторизации.\n"
         f"Код действителен 10 минут.",
@@ -76,7 +92,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /help command"""
     await update.message.reply_text(
-        "🏛 <b>Moscow Chrono Walker</b>\n\n"
+        "\U0001F3DB <b>Moscow Chrono Walker</b>\n\n"
         "Этот бот используется для авторизации на сайте.\n\n"
         "Команды:\n"
         "/start - Получить код для входа\n"

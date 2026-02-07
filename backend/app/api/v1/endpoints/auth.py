@@ -93,15 +93,33 @@ async def telegram_code_auth(
     Authenticate via Telegram bot code.
     Creates a new user if not exists.
     """
-    from app.telegram_bot import get_and_consume_code
+    from sqlalchemy import text
     
-    # Get and validate code
-    code_data = get_and_consume_code(auth_data.code)
-    if not code_data:
+    # Get code from database
+    result = await db.execute(
+        text("""
+            DELETE FROM telegram_auth_codes 
+            WHERE code = :code AND created_at > NOW() - INTERVAL '10 minutes'
+            RETURNING telegram_id, telegram_username, telegram_first_name, telegram_photo_url
+        """),
+        {"code": auth_data.code.strip()}
+    )
+    row = result.fetchone()
+    
+    if not row:
         raise HTTPException(
             status_code=400,
             detail="Неверный или истекший код"
         )
+    
+    await db.commit()
+    
+    code_data = {
+        'telegram_id': row[0],
+        'username': row[1],
+        'first_name': row[2],
+        'photo_url': row[3],
+    }
     
     telegram_id = code_data['telegram_id']
     
