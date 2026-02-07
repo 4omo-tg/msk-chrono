@@ -1,7 +1,7 @@
 <script lang="ts">
     import { API_BASE } from "../lib/config";
     import { apiFetch } from "../lib/api";
-    import { createEventDispatcher } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import {
         Camera,
         MapPin,
@@ -9,6 +9,8 @@
         X,
         CheckCircle,
         AlertCircle,
+        Hand,
+        Info,
     } from "lucide-svelte";
 
     export let selectedPOI: any = null;
@@ -25,9 +27,30 @@
     let verificationResult: { verified: boolean; message: string } | null =
         null;
     let error: string | null = null;
+    
+    // Gesture for liveness verification
+    let gesture: { gesture_id: string; gesture_name: string; gesture_description: string } | null = null;
+    let isLoadingGesture: boolean = false;
 
     function close() {
         dispatch("close");
+    }
+    
+    async function loadGesture() {
+        isLoadingGesture = true;
+        error = null;
+        try {
+            const res = await apiFetch("/api/v1/verification/gesture");
+            if (res.ok) {
+                gesture = await res.json();
+            } else {
+                error = "Не удалось загрузить задание";
+            }
+        } catch (e) {
+            error = "Ошибка сети";
+        } finally {
+            isLoadingGesture = false;
+        }
     }
 
     function getLocation() {
@@ -71,7 +94,7 @@
 
     async function verify() {
         if (method === "geo" && !coords) return;
-        if (method === "photo" && !photoFile) return;
+        if (method === "photo" && (!photoFile || !gesture)) return;
 
         isVerifying = true;
         error = null;
@@ -86,6 +109,9 @@
 
         if (photoFile) {
             formData.append("file", photoFile);
+            if (gesture) {
+                formData.append("gesture_id", gesture.gesture_id);
+            }
         }
 
         try {
@@ -129,6 +155,12 @@
         photoPreview = null;
         verificationResult = null;
         error = null;
+        gesture = null;
+    }
+    
+    // Load gesture when photo method is selected
+    $: if (step === 2 && method === "photo" && !gesture && !isLoadingGesture) {
+        loadGesture();
     }
 </script>
 
@@ -136,11 +168,11 @@
     class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
 >
     <div
-        class="bg-neutral-900 border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl relative"
+        class="bg-neutral-900 border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl relative max-h-[90vh] overflow-y-auto"
     >
         <button
             on:click={close}
-            class="absolute top-4 right-4 text-gray-400 hover:text-white"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white z-10"
         >
             <X size={24} />
         </button>
@@ -236,21 +268,42 @@
                 </div>
             </div>
         {:else if step === 2}
-            <div class="space-y-6 text-center py-4">
-                <div
-                    class="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto text-amber-500"
-                >
-                    <Camera size={40} />
+            <div class="space-y-5 py-4">
+                <!-- Instructions -->
+                <div class="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                        <Info size={20} class="text-blue-400 mt-0.5 flex-shrink-0" />
+                        <div class="text-sm">
+                            <p class="text-blue-300 font-medium mb-2">Что должно быть на фото:</p>
+                            <ul class="text-blue-200/80 space-y-1 list-disc list-inside">
+                                <li>Достопримечательность <span class="font-medium">"{selectedPOI?.title}"</span></li>
+                                <li>Ваша рука с жестом (см. ниже)</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-white font-medium mb-2">
-                        Шаг 2: Фото подтверждение
-                    </p>
-                    <p class="text-gray-400 text-sm">
-                        Сделайте фото достопримечательности.
-                    </p>
-                </div>
+                
+                <!-- Gesture requirement -->
+                {#if isLoadingGesture}
+                    <div class="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 flex items-center justify-center gap-3">
+                        <Loader size={20} class="animate-spin text-purple-400" />
+                        <span class="text-purple-300">Загрузка задания...</span>
+                    </div>
+                {:else if gesture}
+                    <div class="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
+                        <div class="flex items-start gap-3">
+                            <Hand size={24} class="text-purple-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p class="text-purple-300 font-medium mb-1">Требуемый жест:</p>
+                                <p class="text-2xl mb-1">{gesture.gesture_name}</p>
+                                <p class="text-purple-200/70 text-sm">{gesture.gesture_description}</p>
+                                <p class="text-purple-200/50 text-xs mt-2">Жест не должен закрывать достопримечательность</p>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
 
+                <!-- Photo upload -->
                 <div
                     class="bg-white/5 p-4 rounded-xl border border-white/10 relative overflow-hidden group"
                 >
@@ -269,11 +322,12 @@
                         </div>
                     {:else}
                         <div
-                            class="h-48 flex items-center justify-center border-2 border-dashed border-white/20 rounded-lg"
+                            class="h-48 flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-lg gap-2"
                         >
-                            <span class="text-gray-500 text-sm"
-                                >Нажмите или перетащите фото</span
-                            >
+                            <Camera size={32} class="text-gray-500" />
+                            <span class="text-gray-500 text-sm text-center px-4">
+                                Нажмите или перетащите фото
+                            </span>
                         </div>
                     {/if}
                     <input
@@ -285,16 +339,28 @@
                     />
                 </div>
 
+                {#if error}
+                    <div
+                        class="bg-red-500/10 text-red-500 p-3 rounded-lg text-sm flex items-center gap-2"
+                    >
+                        <AlertCircle size={16} />
+                        {error}
+                    </div>
+                {/if}
+
                 <div class="flex gap-3">
                     <button
-                        on:click={() => (step = 0)}
+                        on:click={() => {
+                            step = 0;
+                            gesture = null;
+                        }}
                         class="px-4 py-3 bg-white/5 hover:bg-white/10 text-white font-medium rounded-xl transition-all"
                     >
                         Назад
                     </button>
                     <button
                         on:click={verify}
-                        disabled={!photoFile || isVerifying}
+                        disabled={!photoFile || isVerifying || !gesture}
                         class="flex-1 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2"
                     >
                         {#if isVerifying}
