@@ -1,13 +1,11 @@
 from datetime import timedelta
 from typing import Any
-import hashlib
-import hmac
-import time
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 
 from app import models, schemas
 from app.api import deps
@@ -17,42 +15,8 @@ from app.core.config import settings
 router = APIRouter()
 
 
-def verify_telegram_auth(data: schemas.TelegramAuthData) -> bool:
-    """Verify Telegram Login Widget authentication data"""
-    if not settings.TELEGRAM_BOT_TOKEN:
-        return False
-    
-    # Check auth_date is not too old (valid for 1 day)
-    if time.time() - data.auth_date > 86400:
-        return False
-    
-    # Create check string
-    check_data = {
-        'id': data.id,
-        'first_name': data.first_name,
-        'auth_date': data.auth_date,
-    }
-    if data.last_name:
-        check_data['last_name'] = data.last_name
-    if data.username:
-        check_data['username'] = data.username
-    if data.photo_url:
-        check_data['photo_url'] = data.photo_url
-    
-    # Sort and create string
-    check_string = '\n'.join(f'{k}={v}' for k, v in sorted(check_data.items()))
-    
-    # Create secret key from bot token
-    secret_key = hashlib.sha256(settings.TELEGRAM_BOT_TOKEN.encode()).digest()
-    
-    # Calculate hash
-    calculated_hash = hmac.new(
-        secret_key,
-        check_string.encode(),
-        hashlib.sha256
-    ).hexdigest()
-    
-    return calculated_hash == data.hash
+class TelegramCodeAuth(BaseModel):
+    code: str
 
 
 @router.post("/login/access-token", response_model=schemas.Token)
@@ -119,32 +83,37 @@ async def register(
     return user
 
 
-@router.post("/telegram", response_model=schemas.Token)
-async def telegram_auth(
+@router.post("/telegram/code", response_model=schemas.Token)
+async def telegram_code_auth(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    auth_data: schemas.TelegramAuthData,
+    auth_data: TelegramCodeAuth,
 ) -> Any:
     """
-    Authenticate via Telegram Login Widget.
+    Authenticate via Telegram bot code.
     Creates a new user if not exists.
     """
-    # Verify telegram data
-    if not verify_telegram_auth(auth_data):
+    from app.telegram_bot import get_and_consume_code
+    
+    # Get and validate code
+    code_data = get_and_consume_code(auth_data.code)
+    if not code_data:
         raise HTTPException(
             status_code=400,
-            detail="Invalid Telegram authentication data"
+            detail="Неверный или истекший код"
         )
+    
+    telegram_id = code_data['telegram_id']
     
     # Find or create user
     result = await db.execute(
-        select(models.User).where(models.User.telegram_id == auth_data.id)
+        select(models.User).where(models.User.telegram_id == telegram_id)
     )
     user = result.scalars().first()
     
     if not user:
         # Create new user
-        username = auth_data.username or f"tg_{auth_data.id}"
+        username = code_data['username'] or f"tg_{telegram_id}"
         
         # Check if username exists
         result = await db.execute(
@@ -158,10 +127,10 @@ async def telegram_auth(
         
         user = models.User(
             username=username,
-            telegram_id=auth_data.id,
-            telegram_username=auth_data.username,
-            telegram_first_name=auth_data.first_name,
-            telegram_photo_url=auth_data.photo_url,
+            telegram_id=telegram_id,
+            telegram_username=code_data['username'],
+            telegram_first_name=code_data['first_name'],
+            telegram_photo_url=code_data['photo_url'],
             is_active=True,
         )
         db.add(user)
@@ -169,9 +138,9 @@ async def telegram_auth(
         await db.refresh(user)
     else:
         # Update telegram info
-        user.telegram_username = auth_data.username
-        user.telegram_first_name = auth_data.first_name
-        user.telegram_photo_url = auth_data.photo_url
+        user.telegram_username = code_data['username']
+        user.telegram_first_name = code_data['first_name']
+        user.telegram_photo_url = code_data['photo_url']
         await db.commit()
     
     if not user.is_active:
@@ -188,5 +157,5 @@ async def telegram_auth(
 
 @router.get("/telegram/bot-username")
 async def get_telegram_bot_username() -> dict:
-    """Get Telegram bot username for Login Widget"""
+    """Get Telegram bot username for auth link"""
     return {"bot_username": settings.TELEGRAM_BOT_USERNAME}
