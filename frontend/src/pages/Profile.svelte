@@ -178,11 +178,13 @@
     }
     // Reactive level details
     // Only calculate if user is loaded
-    $: currentLevel = user
+    $: currentLevel = user && typeof user.xp === 'number'
         ? Math.max(1, Math.floor((-5 + Math.sqrt(49 + 0.16 * user.xp)) / 2))
         : 1;
-    $: xpForNextLevel =
-        25 * Math.pow(currentLevel + 1, 2) + 125 * (currentLevel + 1) - 150;
+    $: xpForNextLevel = currentLevel
+        ? 25 * Math.pow(currentLevel + 1, 2) + 125 * (currentLevel + 1) - 150
+        : 0;
+    $: displayXp = user && typeof user.xp === 'number' ? Math.floor(user.xp) : 0;
 </script>
 
 <div class="min-h-screen bg-neutral-900 text-white p-8">
@@ -215,7 +217,7 @@
                             {user.username}
                         </h2>
                         <p class="text-gray-400">
-                            Уровень {currentLevel} • {user.xp} / {xpForNextLevel}
+                            Уровень {currentLevel} • {displayXp} / {xpForNextLevel}
                             XP
                         </p>
                     </div>
