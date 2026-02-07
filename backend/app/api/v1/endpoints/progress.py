@@ -28,6 +28,26 @@ async def read_user_progress(
     )
     return result.scalars().all()
 
+
+@router.get("/current", response_model=schemas.UserProgress)
+async def get_current_progress(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Get current active (in_progress) route progress.
+    """
+    result = await db.execute(
+        select(models.UserProgress)
+        .where(models.UserProgress.user_id == current_user.id)
+        .where(models.UserProgress.status == "in_progress")
+        .limit(1)
+    )
+    progress = result.scalars().first()
+    if not progress:
+        raise HTTPException(status_code=404, detail="No active route")
+    return progress
+
 @router.post("/", response_model=schemas.UserProgress)
 async def create_progress(
     *,
