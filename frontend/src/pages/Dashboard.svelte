@@ -256,9 +256,10 @@
     }
 
     // Level Calculation Logic
+    $: safeUserXP = typeof userXP === 'number' && !isNaN(userXP) ? userXP : 0;
     $: currentLevel = Math.max(
         1,
-        Math.floor((-5 + Math.sqrt(49 + 0.16 * userXP)) / 2),
+        Math.floor((-5 + Math.sqrt(49 + 0.16 * safeUserXP)) / 2),
     );
     $: xpForCurrentLevel =
         25 * Math.pow(currentLevel, 2) + 125 * currentLevel - 150;
@@ -268,7 +269,7 @@
         100,
         Math.max(
             0,
-            ((userXP - xpForCurrentLevel) /
+            ((safeUserXP - xpForCurrentLevel) /
                 (xpForNextLevel - xpForCurrentLevel)) *
                 100,
         ),
@@ -306,7 +307,7 @@
                     ></div>
                 </div>
                 <span class="text-xs font-medium text-gray-300"
-                    >{Math.floor(userXP)} / {xpForNextLevel} XP</span
+                    >{Math.floor(safeUserXP)} / {xpForNextLevel} XP</span
                 >
             </div>
         </div>
