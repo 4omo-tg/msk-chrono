@@ -141,7 +141,7 @@
 
         try {
             // 1. Get User Data
-            const userRes = await apiGet("/api/v1/users/me/");
+            const userRes = await apiGet("/api/v1/users/me");
             if (userRes.ok) {
                 user = await userRes.json();
             }

@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.web.admin import router as admin_router
@@ -26,7 +27,7 @@ elif True:
     # Fallback for dev if settings not loaded correctly or empty
      app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "http://127.0.0.1:5173", "https://test-serv.exe.xyz:5173", "https://test-serv.exe.xyz:8080", "http://localhost:8080"],
+        allow_origins=["*"],  # Allow all for SPA served from same origin
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -37,12 +38,34 @@ elif True:
 if not os.path.exists("app/uploads"):
     os.makedirs("app/uploads")
 
+# Frontend dist directory
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
+
 app.mount("/static", StaticFiles(directory="app/uploads"), name="static")
+
+# Mount frontend assets
+if os.path.exists(os.path.join(FRONTEND_DIR, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="frontend_assets")
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix="/admin")
 
 
-@app.get("/")
-async def root():
+# Serve frontend for all non-API routes (SPA fallback)
+@app.get("/{full_path:path}")
+async def serve_frontend(request: Request, full_path: str):
+    # Skip API and admin routes
+    if full_path.startswith("api/") or full_path.startswith("admin/") or full_path.startswith("static/") or full_path.startswith("assets/"):
+        return {"detail": "Not Found"}
+    
+    # Try to serve static file first
+    file_path = os.path.join(FRONTEND_DIR, full_path)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+    
+    # Fallback to index.html for SPA routing
+    index_path = os.path.join(FRONTEND_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    
     return {"message": "Welcome to Moscow Chrono Walker API"}
