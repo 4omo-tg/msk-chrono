@@ -191,7 +191,8 @@ async def upload_avatar(
         raise HTTPException(status_code=400, detail="File too large (max 5MB)")
     
     # Save file
-    upload_dir = "uploads/avatars"
+    uploads_dir = os.environ.get("UPLOADS_DIR", "uploads")
+    upload_dir = os.path.join(uploads_dir, "avatars")
     os.makedirs(upload_dir, exist_ok=True)
     
     ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "jpg"
