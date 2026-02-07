@@ -1,11 +1,64 @@
 <script lang="ts">
     import { API_BASE } from "../lib/config";
     import { push } from "svelte-spa-router";
+    import { onMount } from "svelte";
 
     let email = "";
     let username = "";
     let password = "";
     let error = "";
+    let telegramBotUsername = "moscow_chrono_bot";
+
+    onMount(async () => {
+        // Get bot username from backend
+        try {
+            const resp = await fetch(`${API_BASE}/api/v1/telegram/bot-username`);
+            if (resp.ok) {
+                const data = await resp.json();
+                telegramBotUsername = data.bot_username;
+            }
+        } catch (e) {
+            console.log("Could not fetch telegram bot username");
+        }
+
+        // Setup Telegram Login Widget callback
+        (window as any).onTelegramAuth = async (user: any) => {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/telegram`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(user),
+                });
+
+                if (!response.ok) {
+                    throw new Error("Telegram auth failed");
+                }
+
+                const data = await response.json();
+                localStorage.setItem("token", data.access_token);
+                localStorage.removeItem("onboarding_completed");
+                push("/dashboard");
+            } catch (e) {
+                error = "Ошибка регистрации через Telegram";
+            }
+        };
+
+        // Load Telegram widget script
+        const script = document.createElement("script");
+        script.src = "https://telegram.org/js/telegram-widget.js?22";
+        script.setAttribute("data-telegram-login", telegramBotUsername);
+        script.setAttribute("data-size", "large");
+        script.setAttribute("data-onauth", "onTelegramAuth(user)");
+        script.setAttribute("data-request-access", "write");
+        script.async = true;
+        
+        const container = document.getElementById("telegram-login-container");
+        if (container) {
+            container.appendChild(script);
+        }
+    });
 
     async function handleRegister() {
         try {
@@ -127,6 +180,21 @@
                     Зарегистрироваться
                 </button>
             </div>
+            <!-- Divider -->
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-neutral-700"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-neutral-800 text-gray-400">или</span>
+                </div>
+            </div>
+
+            <!-- Telegram Login -->
+            <div class="flex justify-center">
+                <div id="telegram-login-container"></div>
+            </div>
+
             <div class="text-center">
                 <a
                     href="#/login"

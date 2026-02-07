@@ -1,5 +1,5 @@
 from .token import Token, TokenPayload
-from .user import User, UserCreate, UserInDB, UserUpdate
+from .user import User, UserCreate, UserInDB, UserUpdate, TelegramAuthData
 from .poi import PointOfInterest, PointOfInterestCreate, PointOfInterestUpdate
 from .route import Route, RouteCreate, RouteUpdate
 from .progress import UserProgress, UserProgressCreate, UserProgressUpdate, CheckIn, CheckInResponse

@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     BACKEND_CORS_ORIGINS: list[str] = []
     
+    # Telegram Bot Settings
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = "moscow_chrono_bot"
+    
     # AI API Settings (Qwen AI Proxy)
     AI_API_BASE_URL: str = "https://ai-proxxy.exe.xyz/api"
     AI_API_KEY: Optional[str] = None

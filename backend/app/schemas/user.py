@@ -24,8 +24,23 @@ class UserUpdate(UserBase):
     password: Optional[str] = None
 
 
+# Telegram auth data
+class TelegramAuthData(BaseModel):
+    id: int
+    first_name: str
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    photo_url: Optional[str] = None
+    auth_date: int
+    hash: str
+
+
 class UserInDBBase(UserBase):
     id: Optional[int] = None
+    telegram_id: Optional[int] = None
+    telegram_username: Optional[str] = None
+    telegram_first_name: Optional[str] = None
+    telegram_photo_url: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -39,4 +54,4 @@ class User(UserInDBBase):
 
 # Additional properties stored in DB
 class UserInDB(UserInDBBase):
-    hashed_password: str
+    hashed_password: Optional[str] = None
