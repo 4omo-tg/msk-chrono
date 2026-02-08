@@ -175,30 +175,33 @@
     $: selectedFrame = frames.find(f => f.id === selectedFrameId);
 </script>
 
-<div class="min-h-screen bg-neutral-900 text-white p-4 pb-20">
-    <div class="max-w-2xl mx-auto">
-        <!-- Header -->
-        <div class="flex items-center gap-4 mb-6">
+<div class="min-h-screen bg-neutral-900 text-white pb-20">
+    <!-- Sticky Header -->
+    <header class="sticky top-0 z-50 bg-neutral-900/80 backdrop-blur-md border-b border-white/10">
+        <div class="max-w-2xl mx-auto px-4 py-3 flex items-center gap-4">
             <a href="#/profile" class="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700">
                 <ArrowLeft size={20} />
             </a>
-            <h1 class="text-2xl font-bold">Настройки профиля</h1>
+            <h1 class="text-lg sm:text-xl font-bold truncate">Настройки</h1>
         </div>
+    </header>
+    
+    <div class="max-w-2xl mx-auto px-4 py-4">
         
         {#if loading}
             <div class="flex items-center justify-center h-64">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
             </div>
         {:else if user}
-            <!-- Tabs -->
-            <div class="flex gap-2 mb-6 overflow-x-auto">
+            <!-- Tabs - Horizontal scroll on mobile -->
+            <div class="flex gap-2 mb-6 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
                 {#each [{id: 'profile', label: 'Профиль', icon: User}, {id: 'titles', label: 'Титулы', icon: Crown}, {id: 'frames', label: 'Рамки', icon: Sparkles}, {id: 'badges', label: 'Бейджи', icon: Award}] as tab}
                     <button
                         on:click={() => activeTab = tab.id}
-                        class="flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors {activeTab === tab.id ? 'bg-amber-500 text-black' : 'bg-neutral-800 hover:bg-neutral-700'}"
+                        class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg whitespace-nowrap transition-colors text-sm sm:text-base {activeTab === tab.id ? 'bg-amber-500 text-black' : 'bg-neutral-800 hover:bg-neutral-700'}"
                     >
                         <svelte:component this={tab.icon} size={16} />
-                        {tab.label}
+                        <span class="hidden xs:inline">{tab.label}</span>
                     </button>
                 {/each}
             </div>
@@ -417,20 +420,22 @@
                 </div>
             {/if}
             
-            <!-- Save Button -->
-            <div class="fixed bottom-0 left-0 right-0 p-4 bg-neutral-900 border-t border-white/10">
-                <button
-                    on:click={saveProfile}
-                    disabled={saving}
-                    class="w-full py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-500/50 text-black font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
-                >
-                    {#if saving}
-                        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
-                    {:else}
-                        <Save size={20} />
-                        Сохранить
-                    {/if}
-                </button>
+            <!-- Save Button - Safe area on mobile -->
+            <div class="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-neutral-900/95 backdrop-blur-md border-t border-white/10">
+                <div class="max-w-2xl mx-auto">
+                    <button
+                        on:click={saveProfile}
+                        disabled={saving}
+                        class="w-full py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-500/50 text-black font-bold rounded-xl transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+                    >
+                        {#if saving}
+                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
+                        {:else}
+                            <Save size={20} />
+                            Сохранить
+                        {/if}
+                    </button>
+                </div>
             </div>
         {/if}
     </div>

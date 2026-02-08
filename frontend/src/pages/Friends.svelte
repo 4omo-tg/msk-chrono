@@ -122,15 +122,18 @@
     }
 </script>
 
-<div class="min-h-screen bg-neutral-900 text-white p-4">
-    <div class="max-w-2xl mx-auto">
-        <!-- Header -->
-        <div class="flex items-center gap-4 mb-6">
+<div class="min-h-screen bg-neutral-900 text-white">
+    <!-- Sticky Header -->
+    <header class="sticky top-0 z-50 bg-neutral-900/80 backdrop-blur-md border-b border-white/10">
+        <div class="max-w-2xl mx-auto px-4 py-3 flex items-center gap-4">
             <a href="#/profile" class="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700">
                 <ArrowLeft size={20} />
             </a>
-            <h1 class="text-2xl font-bold">Друзья</h1>
+            <h1 class="text-xl font-bold">Друзья</h1>
         </div>
+    </header>
+
+    <div class="max-w-2xl mx-auto px-4 py-4">
 
         <!-- Search -->
         <div class="relative mb-6">
@@ -188,34 +191,34 @@
             <div class="text-center text-gray-500 mb-6 py-4">Никого не найдено</div>
         {/if}
 
-        <!-- Tabs -->
-        <div class="flex gap-2 mb-4 overflow-x-auto">
+        <!-- Tabs - Scrollable on mobile -->
+        <div class="flex gap-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
             <button
                 on:click={() => activeTab = 'friends'}
-                class="flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors {activeTab === 'friends' ? 'bg-amber-500 text-black' : 'bg-neutral-800 hover:bg-neutral-700'}"
+                class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg whitespace-nowrap transition-colors text-sm sm:text-base {activeTab === 'friends' ? 'bg-amber-500 text-black' : 'bg-neutral-800 hover:bg-neutral-700'}"
             >
                 <Users size={16} />
-                Друзья
+                <span class="hidden xs:inline">Друзья</span>
                 {#if counts.friends > 0}
                     <span class="text-xs bg-black/20 px-1.5 py-0.5 rounded-full">{counts.friends}</span>
                 {/if}
             </button>
             <button
                 on:click={() => activeTab = 'incoming'}
-                class="flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors {activeTab === 'incoming' ? 'bg-amber-500 text-black' : 'bg-neutral-800 hover:bg-neutral-700'}"
+                class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg whitespace-nowrap transition-colors text-sm sm:text-base {activeTab === 'incoming' ? 'bg-amber-500 text-black' : 'bg-neutral-800 hover:bg-neutral-700'}"
             >
                 <Inbox size={16} />
-                Входящие
+                <span class="hidden xs:inline">Входящие</span>
                 {#if counts.incoming_requests > 0}
                     <span class="text-xs bg-red-500 px-1.5 py-0.5 rounded-full text-white">{counts.incoming_requests}</span>
                 {/if}
             </button>
             <button
                 on:click={() => activeTab = 'outgoing'}
-                class="flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors {activeTab === 'outgoing' ? 'bg-amber-500 text-black' : 'bg-neutral-800 hover:bg-neutral-700'}"
+                class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg whitespace-nowrap transition-colors text-sm sm:text-base {activeTab === 'outgoing' ? 'bg-amber-500 text-black' : 'bg-neutral-800 hover:bg-neutral-700'}"
             >
                 <Send size={16} />
-                Исходящие
+                <span class="hidden xs:inline">Исходящие</span>
                 {#if counts.outgoing_requests > 0}
                     <span class="text-xs bg-black/20 px-1.5 py-0.5 rounded-full">{counts.outgoing_requests}</span>
                 {/if}

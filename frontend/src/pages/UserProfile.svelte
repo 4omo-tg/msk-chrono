@@ -104,15 +104,18 @@
     $: xpForNextLevel = 25 * Math.pow(currentLevel + 1, 2) + 125 * (currentLevel + 1) - 150;
 </script>
 
-<div class="min-h-screen bg-neutral-900 text-white p-4">
-    <div class="max-w-2xl mx-auto">
-        <!-- Header -->
-        <div class="flex items-center gap-4 mb-6">
+<div class="min-h-screen bg-neutral-900 text-white">
+    <!-- Sticky Header -->
+    <header class="sticky top-0 z-50 bg-neutral-900/80 backdrop-blur-md border-b border-white/10">
+        <div class="max-w-2xl mx-auto px-4 py-3 flex items-center gap-4">
             <button on:click={() => history.back()} class="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700">
                 <ArrowLeft size={20} />
             </button>
-            <h1 class="text-2xl font-bold">Профиль</h1>
+            <h1 class="text-xl font-bold">Профиль</h1>
         </div>
+    </header>
+
+    <div class="max-w-2xl mx-auto px-4 py-4">
 
         {#if loading}
             <div class="flex items-center justify-center h-64">
@@ -178,7 +181,7 @@
                     {/if}
                     
                     <!-- Stats -->
-                    <div class="grid grid-cols-4 gap-3 mb-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
                         <div class="bg-neutral-900 p-3 rounded-lg text-center">
                             <div class="text-lg font-bold text-amber-500">{currentLevel}</div>
                             <div class="text-xs text-gray-500">Уровень</div>

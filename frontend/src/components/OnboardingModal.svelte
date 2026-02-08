@@ -58,10 +58,10 @@
     }
 </script>
 
-<div class="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-neutral-800 border border-white/10 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+<div class="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-neutral-800 border border-white/10 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden max-h-[95vh] overflow-y-auto">
         <!-- Header -->
-        <div class="relative h-48 bg-gradient-to-br from-amber-500/20 to-amber-600/10 flex items-center justify-center">
+        <div class="relative h-36 sm:h-48 bg-gradient-to-br from-amber-500/20 to-amber-600/10 flex items-center justify-center">
             <button
                 on:click={skip}
                 class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
@@ -70,40 +70,41 @@
                 <X size={24} />
             </button>
             
-            <div class="w-24 h-24 bg-amber-500/20 rounded-full flex items-center justify-center border-2 border-amber-500/30">
-                <svelte:component this={steps[currentStep].icon} size={48} class="text-amber-500" />
+            <div class="w-16 h-16 sm:w-24 sm:h-24 bg-amber-500/20 rounded-full flex items-center justify-center border-2 border-amber-500/30">
+                <svelte:component this={steps[currentStep].icon} size={36} class="text-amber-500 sm:hidden" />
+                <svelte:component this={steps[currentStep].icon} size={48} class="text-amber-500 hidden sm:block" />
             </div>
         </div>
 
         <!-- Content -->
-        <div class="p-8">
-            <h2 class="text-2xl font-bold text-white mb-4">
+        <div class="p-5 sm:p-8">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">
                 {steps[currentStep].title}
             </h2>
             
-            <p class="text-gray-300 leading-relaxed mb-4">
+            <p class="text-gray-300 leading-relaxed mb-3 sm:mb-4 text-sm sm:text-base">
                 {steps[currentStep].description}
             </p>
             
-            <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-6">
-                <p class="text-amber-400 text-sm font-medium">
+            <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 sm:p-4 mb-5 sm:mb-6">
+                <p class="text-amber-400 text-xs sm:text-sm font-medium">
                     💡 {steps[currentStep].highlight}
                 </p>
             </div>
 
             <!-- Progress dots -->
-            <div class="flex justify-center gap-2 mb-6">
+            <div class="flex justify-center gap-2 mb-5 sm:mb-6">
                 {#each steps as _, i}
                     <button
                         on:click={() => currentStep = i}
                         class="w-2 h-2 rounded-full transition-all {i === currentStep ? 'bg-amber-500 w-6' : 'bg-white/20 hover:bg-white/40'}"
                         aria-label="Шаг {i + 1}"
-                    />
+                    ></button>
                 {/each}
             </div>
 
             <!-- Navigation -->
-            <div class="flex gap-3">
+            <div class="flex gap-2 sm:gap-3">
                 {#if currentStep > 0}
                     <button
                         on:click={prevStep}
