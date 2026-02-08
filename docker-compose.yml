@@ -32,6 +32,20 @@ services:
     volumes:
       - uploads:/app/uploads
 
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/moscow_chrono
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-moscow_chrono_bot}
+      - SECRET_KEY=supersecretkey123changeme
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   uploads:
