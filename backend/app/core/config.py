@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     AI_API_BASE_URL: str = "https://ai-proxxy.exe.xyz/api"
     AI_API_KEY: Optional[str] = None
     AI_MODEL: str = "qwen3-vl-plus"  # Latest Qwen3 VL model
+    
+    # Site URL (for Telegram bot links)
+    SITE_URL: str = "http://localhost:8000"
 
     class Config:
         env_file = ".env"

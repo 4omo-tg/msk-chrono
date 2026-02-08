@@ -7,8 +7,8 @@ from app.core.config import settings
 # Database connection string (sync version for bot)
 DB_URL = settings.DATABASE_URL.replace('+asyncpg', '').replace('postgresql+asyncpg', 'postgresql')
 
-# Site URL
-SITE_URL = "https://test-serv.exe.xyz:8000"
+# Site URL from config
+SITE_URL = settings.SITE_URL
 
 
 def check_user_exists(telegram_id: int) -> bool:

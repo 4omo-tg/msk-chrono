@@ -1,29 +1,48 @@
+# Moscow Chrono Walker - Docker Compose
+# Запуск: docker compose up -d --build
+# Приложение будет доступно на http://localhost:8000
+
 services:
+  # PostgreSQL + PostGIS
   db:
     image: postgis/postgis:15-3.3
+    restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=moscow_chrono
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-moscow_chrono}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
+  # Backend (FastAPI) + Frontend (Svelte, встроен в backend)
   backend:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/moscow_chrono
-      - SECRET_KEY=supersecretkey123changeme
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-moscow_chrono_bot}
+      # База данных
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-moscow_chrono}
+      # JWT авторизация
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+      # Telegram
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN in .env}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:?Set TELEGRAM_BOT_USERNAME in .env}
+      # AI API
+      AI_API_BASE_URL: ${AI_API_BASE_URL:-https://ai-proxxy.exe.xyz/api}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-qwen3-vl-plus}
+      # Site URL
+      SITE_URL: ${SITE_URL:-http://localhost:8000}
     ports:
       - "8000:8000"
     depends_on:
@@ -31,21 +50,31 @@ services:
         condition: service_healthy
     volumes:
       - uploads:/app/uploads
+    networks:
+      - app-network
 
+  # Telegram Bot (отдельный процесс)
   telegram-bot:
     build:
       context: .
       dockerfile: Dockerfile.bot
+    restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/moscow_chrono
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-moscow_chrono_bot}
-      - SECRET_KEY=supersecretkey123changeme
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-moscow_chrono}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN in .env}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:?Set TELEGRAM_BOT_USERNAME in .env}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      SITE_URL: ${SITE_URL:-http://localhost:8000}
     depends_on:
       db:
         condition: service_healthy
-    restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
   uploads:
+
+networks:
+  app-network:
+    driver: bridge
