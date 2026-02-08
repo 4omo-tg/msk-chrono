@@ -10,6 +10,7 @@
   import Friends from "./pages/Friends.svelte";
   import UserProfile from "./pages/UserProfile.svelte";
   import TelegramCallback from "./pages/TelegramCallback.svelte";
+  import InstallPrompt from "./components/InstallPrompt.svelte";
 
   const routes = {
     "/": Home,
@@ -26,3 +27,4 @@
 </script>
 
 <Router {routes} />
+<InstallPrompt />

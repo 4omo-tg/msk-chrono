@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background fills entire canvas for maskable icons -->
+  <rect width="512" height="512" fill="#171717"/>
+  <!-- Content scaled down to 80% and centered for safe zone -->
+  <g transform="translate(51.2, 51.2) scale(0.8)">
+    <g transform="translate(96, 96)">
+      <!-- Map/Clock icon combination -->
+      <circle cx="160" cy="160" r="140" fill="none" stroke="#f59e0b" stroke-width="16"/>
+      <circle cx="160" cy="160" r="100" fill="#f59e0b" fill-opacity="0.1"/>
+      <!-- Map pin in center -->
+      <path d="M160 80 C120 80 90 110 90 150 C90 200 160 260 160 260 C160 260 230 200 230 150 C230 110 200 80 160 80 Z" 
+            fill="#f59e0b"/>
+      <circle cx="160" cy="145" r="25" fill="#171717"/>
+      <!-- Clock hands -->
+      <line x1="160" y1="160" x2="160" y2="100" stroke="#f59e0b" stroke-width="8" stroke-linecap="round"/>
+      <line x1="160" y1="160" x2="200" y2="180" stroke="#f59e0b" stroke-width="6" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>
