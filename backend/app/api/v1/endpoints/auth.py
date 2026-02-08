@@ -230,6 +230,173 @@ async def get_telegram_bot_username() -> dict:
     return {"bot_username": settings.TELEGRAM_BOT_USERNAME}
 
 
+class TelegramAuthSession(BaseModel):
+    session_id: str
+    bot_link: str
+
+
+@router.post("/telegram/init-auth", response_model=TelegramAuthSession)
+async def init_telegram_auth(
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Initialize Telegram auth session.
+    Returns a unique link to the bot for authentication.
+    """
+    import secrets
+    from sqlalchemy import text
+    
+    # Generate unique session ID
+    session_id = secrets.token_urlsafe(16)
+    
+    # Store session in database
+    await db.execute(
+        text("""
+            INSERT INTO telegram_auth_sessions (session_id, created_at)
+            VALUES (:session_id, NOW())
+        """),
+        {"session_id": session_id}
+    )
+    await db.commit()
+    
+    # Clean old sessions (older than 10 minutes)
+    await db.execute(
+        text("DELETE FROM telegram_auth_sessions WHERE created_at < NOW() - INTERVAL '10 minutes' AND telegram_id IS NULL")
+    )
+    await db.commit()
+    
+    bot_link = f"https://t.me/{settings.TELEGRAM_BOT_USERNAME}?start={session_id}"
+    
+    return {
+        "session_id": session_id,
+        "bot_link": bot_link
+    }
+
+
+class TelegramAuthStatus(BaseModel):
+    status: str  # 'pending', 'ready', 'expired'
+
+
+@router.get("/telegram/auth-status/{session_id}", response_model=TelegramAuthStatus)
+async def get_telegram_auth_status(
+    session_id: str,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Check if user has authenticated via Telegram bot.
+    """
+    from sqlalchemy import text
+    
+    result = await db.execute(
+        text("""
+            SELECT telegram_id, created_at 
+            FROM telegram_auth_sessions 
+            WHERE session_id = :session_id
+        """),
+        {"session_id": session_id}
+    )
+    row = result.fetchone()
+    
+    if not row:
+        return {"status": "expired"}
+    
+    telegram_id, created_at = row
+    
+    # Check if expired (10 minutes)
+    from datetime import datetime, timezone
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    if (now - created_at).total_seconds() > 600:
+        return {"status": "expired"}
+    
+    if telegram_id:
+        return {"status": "ready"}
+    
+    return {"status": "pending"}
+
+
+@router.post("/telegram/session/{session_id}", response_model=schemas.Token)
+async def telegram_session_auth(
+    session_id: str,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Complete auth via session_id after user clicked Start in bot.
+    """
+    from sqlalchemy import text
+    
+    # Get and delete session
+    result = await db.execute(
+        text("""
+            DELETE FROM telegram_auth_sessions 
+            WHERE session_id = :session_id 
+              AND telegram_id IS NOT NULL
+              AND created_at > NOW() - INTERVAL '10 minutes'
+            RETURNING telegram_id, telegram_username, telegram_first_name, telegram_photo_url
+        """),
+        {"session_id": session_id}
+    )
+    row = result.fetchone()
+    await db.commit()
+    
+    if not row:
+        raise HTTPException(
+            status_code=400,
+            detail="Сессия не найдена или истекла"
+        )
+    
+    telegram_id, username, first_name, photo_url = row
+    
+    # Find or create user
+    result = await db.execute(
+        select(models.User).where(models.User.telegram_id == telegram_id)
+    )
+    user = result.scalars().first()
+    
+    if not user:
+        # Create new user
+        user_username = username or f"tg_{telegram_id}"
+        
+        # Check if username exists
+        result = await db.execute(
+            select(models.User).where(models.User.username == user_username)
+        )
+        existing = result.scalars().first()
+        if existing:
+            import secrets as sec
+            user_username = f"{user_username}_{sec.token_hex(3)}"
+        
+        user = models.User(
+            username=user_username,
+            telegram_id=telegram_id,
+            telegram_username=username,
+            telegram_first_name=first_name,
+            telegram_photo_url=photo_url,
+            is_active=True,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    else:
+        # Update telegram info
+        user.telegram_username = username
+        user.telegram_first_name = first_name
+        user.telegram_photo_url = photo_url
+        await db.commit()
+    
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    return {
+        "access_token": security.create_access_token(
+            user.id, expires_delta=access_token_expires
+        ),
+        "token_type": "bearer",
+    }
+
+
 @router.post("/telegram/widget", response_model=schemas.Token)
 async def telegram_widget_auth(
     *,

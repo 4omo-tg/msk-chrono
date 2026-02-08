@@ -9,12 +9,10 @@
     let error = "";
     
     // Telegram auth state
-    let authStep: 'initial' | 'waiting' | 'code' = 'initial';
+    let authStep: 'initial' | 'waiting' = 'initial';
     let sessionId = "";
     let botLink = "";
-    let telegramCode = "";
-    let codeError = "";
-    let codeLoading = false;
+    let authError = "";
     let pollInterval: ReturnType<typeof setInterval> | null = null;
 
     onDestroy(() => {
@@ -22,6 +20,7 @@
     });
 
     async function initTelegramAuth() {
+        authError = "";
         try {
             const resp = await fetch(`${API_BASE}/api/v1/telegram/init-auth`, {
                 method: 'POST'
@@ -40,7 +39,7 @@
             }
         } catch (e) {
             console.error("Failed to init telegram auth", e);
-            codeError = "Не удалось создать сессию";
+            authError = "Не удалось создать сессию";
         }
     }
 
@@ -53,14 +52,13 @@
                 if (resp.ok) {
                     const data = await resp.json();
                     
-                    if (data.status === 'ready' && data.code) {
-                        // Auto-fill the code
-                        telegramCode = data.code;
-                        authStep = 'code';
+                    if (data.status === 'ready') {
+                        // User authenticated in bot - complete auth
                         if (pollInterval) clearInterval(pollInterval);
+                        await completeAuth();
                     } else if (data.status === 'expired') {
                         if (pollInterval) clearInterval(pollInterval);
-                        codeError = "Сессия истекла";
+                        authError = "Сессия истекла";
                         authStep = 'initial';
                     }
                 }
@@ -70,22 +68,15 @@
         }, 2000);
     }
 
-    async function handleCodeSubmit() {
-        codeError = "";
-        codeLoading = true;
-        
+    async function completeAuth() {
         try {
-            const response = await fetch(`${API_BASE}/api/v1/telegram/code`, {
+            const response = await fetch(`${API_BASE}/api/v1/telegram/session/${sessionId}`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ code: telegramCode.trim() }),
             });
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.detail || "Неверный код");
+                throw new Error(data.detail || "Ошибка авторизации");
             }
 
             const data = await response.json();
@@ -93,9 +84,8 @@
             localStorage.removeItem("onboarding_completed");
             push("/dashboard");
         } catch (e: any) {
-            codeError = e.message || "Ошибка авторизации";
-        } finally {
-            codeLoading = false;
+            authError = e.message || "Ошибка авторизации";
+            authStep = 'initial';
         }
     }
 
@@ -104,13 +94,7 @@
         authStep = 'initial';
         sessionId = '';
         botLink = '';
-        telegramCode = '';
-        codeError = '';
-    }
-
-    function showCodeInput() {
-        if (pollInterval) clearInterval(pollInterval);
-        authStep = 'code';
+        authError = '';
     }
 
     async function handleRegister() {
@@ -159,6 +143,11 @@
         <!-- Telegram Bot Auth -->
         <div class="space-y-4">
             {#if authStep === 'initial'}
+                {#if authError}
+                    <div class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm text-center">
+                        {authError}
+                    </div>
+                {/if}
                 <button
                     on:click={initTelegramAuth}
                     class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[#2AABEE] hover:bg-[#229ED9] text-white font-medium rounded-lg transition-colors"
@@ -193,53 +182,10 @@
                             Открыть бота снова →
                         </a>
                         <button
-                            on:click={showCodeInput}
-                            class="text-sm text-gray-500 hover:text-gray-400"
-                        >
-                            Ввести код вручную
-                        </button>
-                        <button
                             on:click={resetAuth}
                             class="text-sm text-gray-500 hover:text-gray-400"
                         >
                             Отмена
-                        </button>
-                    </div>
-                </div>
-                
-            {:else if authStep === 'code'}
-                <div class="space-y-4">
-                    <p class="text-gray-400 text-sm text-center">
-                        Введите код из Telegram:
-                    </p>
-                    
-                    {#if codeError}
-                        <div class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm text-center">
-                            {codeError}
-                        </div>
-                    {/if}
-                    
-                    <input
-                        type="text"
-                        bind:value={telegramCode}
-                        placeholder="000000"
-                        maxlength="6"
-                        class="w-full px-4 py-3 text-center text-2xl tracking-[0.5em] font-mono border border-neutral-700 placeholder-gray-600 text-white bg-neutral-900 rounded-lg focus:outline-none focus:ring-amber-500 focus:border-amber-500"
-                    />
-                    
-                    <div class="flex gap-2">
-                        <button
-                            on:click={resetAuth}
-                            class="flex-1 py-2 px-4 border border-neutral-600 text-gray-400 rounded-lg hover:bg-neutral-700 transition-colors"
-                        >
-                            Назад
-                        </button>
-                        <button
-                            on:click={handleCodeSubmit}
-                            disabled={telegramCode.length !== 6 || codeLoading}
-                            class="flex-1 py-2 px-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-500/50 disabled:cursor-not-allowed text-black font-medium rounded-lg transition-colors"
-                        >
-                            {codeLoading ? 'Проверка...' : 'Войти'}
                         </button>
                     </div>
                 </div>

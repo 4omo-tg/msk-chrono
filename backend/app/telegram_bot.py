@@ -1,13 +1,15 @@
-"""Telegram Bot for authentication codes"""
-import asyncio
+"""Telegram Bot for authentication"""
 import secrets
 import psycopg2
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes
 from app.core.config import settings
 
 # Database connection string (sync version for bot)
 DB_URL = settings.DATABASE_URL.replace('+asyncpg', '').replace('postgresql+asyncpg', 'postgresql')
+
+# Site URL for redirect
+SITE_URL = "https://test-serv.exe.xyz:8000"
 
 
 def generate_code() -> str:
@@ -15,14 +17,23 @@ def generate_code() -> str:
     return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
 
 
+def code_exists(code: str) -> bool:
+    """Check if code already exists"""
+    conn = psycopg2.connect(DB_URL)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM telegram_auth_codes WHERE code = %s", (code,))
+        return cur.fetchone() is not None
+    finally:
+        conn.close()
+
+
 def save_code_to_db(code: str, user_data: dict):
     """Save auth code to database"""
     conn = psycopg2.connect(DB_URL)
     try:
         cur = conn.cursor()
-        # Clean old codes (older than 10 minutes)
         cur.execute("DELETE FROM telegram_auth_codes WHERE created_at < NOW() - INTERVAL '10 minutes'")
-        # Insert new code
         cur.execute("""
             INSERT INTO telegram_auth_codes (code, telegram_id, telegram_username, telegram_first_name, telegram_photo_url)
             VALUES (%s, %s, %s, %s, %s)
@@ -38,27 +49,38 @@ def save_code_to_db(code: str, user_data: dict):
         conn.close()
 
 
-def code_exists(code: str) -> bool:
-    """Check if code already exists"""
+def update_auth_session(session_id: str, user_data: dict) -> bool:
+    """Update auth session with user data (no code needed)"""
     conn = psycopg2.connect(DB_URL)
     try:
         cur = conn.cursor()
-        cur.execute("SELECT 1 FROM telegram_auth_codes WHERE code = %s", (code,))
-        return cur.fetchone() is not None
+        cur.execute("""
+            UPDATE telegram_auth_sessions 
+            SET telegram_id = %s, 
+                telegram_username = %s, 
+                telegram_first_name = %s, 
+                telegram_photo_url = %s
+            WHERE session_id = %s 
+              AND created_at > NOW() - INTERVAL '10 minutes'
+              AND telegram_id IS NULL
+            RETURNING id
+        """, (
+            user_data['telegram_id'], 
+            user_data['username'], 
+            user_data['first_name'], 
+            user_data['photo_url'],
+            session_id
+        ))
+        result = cur.fetchone()
+        conn.commit()
+        return result is not None
     finally:
         conn.close()
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /start command - generate auth code"""
+    """Handle /start command"""
     user = update.effective_user
-    
-    # Generate unique code
-    code = generate_code()
-    attempts = 0
-    while code_exists(code) and attempts < 10:
-        code = generate_code()
-        attempts += 1
     
     # Get user photo URL
     photo_url = None
@@ -71,20 +93,48 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         pass
     
-    # Save code to database
     user_data = {
         'telegram_id': user.id,
         'username': user.username,
         'first_name': user.first_name,
         'photo_url': photo_url,
     }
-    save_code_to_db(code, user_data)
     
+    # Check if this is a deep link with session_id
+    if context.args and len(context.args) > 0:
+        session_id = context.args[0]
+        
+        # Try to update the session
+        if update_auth_session(session_id, user_data):
+            # Create inline button to return to site
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(
+                    "\u2705 Вернуться на сайт", 
+                    url=f"{SITE_URL}/#/dashboard"
+                )]
+            ])
+            
+            await update.message.reply_text(
+                f"\U0001F389 <b>Авторизация успешна!</b>\n\n"
+                f"Привет, {user.first_name}!\n"
+                f"Нажмите кнопку ниже, чтобы вернуться на сайт.",
+                parse_mode='HTML',
+                reply_markup=keyboard
+            )
+            return
+        else:
+            await update.message.reply_text(
+                "\u26A0\uFE0F Сессия истекла или уже использована.\n\n"
+                "Пожалуйста, начните авторизацию заново на сайте.",
+                parse_mode='HTML'
+            )
+            return
+    
+    # No session - just welcome message
     await update.message.reply_text(
-        f"\U0001F510 Ваш код для входа на сайт:\n\n"
-        f"<code>{code}</code>\n\n"
-        f"Введите этот код на сайте для авторизации.\n"
-        f"Код действителен 10 минут.",
+        "\U0001F3DB <b>Moscow Chrono Walker</b>\n\n"
+        "Для авторизации перейдите на сайт и нажмите \"Войти через Telegram\".\n\n"
+        f"\U0001F517 {SITE_URL}",
         parse_mode='HTML'
     )
 
@@ -94,9 +144,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "\U0001F3DB <b>Moscow Chrono Walker</b>\n\n"
         "Этот бот используется для авторизации на сайте.\n\n"
-        "Команды:\n"
-        "/start - Получить код для входа\n"
-        "/help - Показать эту справку",
+        "Для входа:\n"
+        f"1. Откройте {SITE_URL}\n"
+        "2. Нажмите \"Войти через Telegram\"\n"
+        "3. Перейдите в бота и нажмите Start\n"
+        "4. Готово! Вы авторизованы.",
         parse_mode='HTML'
     )
 
