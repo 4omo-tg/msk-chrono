@@ -3,7 +3,9 @@
     import { apiGet, apiPost, apiDelete, isAuthenticated } from "../lib/api";
     import { onMount } from "svelte";
     import { push } from "svelte-spa-router";
-    import { User } from "lucide-svelte";
+    import { User, Menu, X, Map, LogOut } from "lucide-svelte";
+    
+    let mobileMenuOpen = false;
 
     let routes: any[] = [];
     let loading = true;
@@ -113,30 +115,73 @@
     }
 </script>
 
-<div class="min-h-screen bg-neutral-900 text-white p-8">
-    <div class="max-w-7xl mx-auto">
-        <div class="flex justify-between items-center mb-8">
-            <h1
-                class="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent"
-            >
-                Пешеходные маршруты
-            </h1>
-            <div class="flex items-center gap-6">
-                <a
-                    href="#/dashboard"
-                    class="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+<div class="min-h-screen bg-neutral-900 text-white">
+    <!-- Mobile Header -->
+    <header class="sticky top-0 z-50 bg-neutral-900/80 backdrop-blur-md border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-14 lg:h-16">
+                <h1
+                    class="text-xl lg:text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent"
                 >
-                    <span class="text-sm">Дашборд</span>
-                </a>
-                <a
-                    href="#/profile"
-                    class="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+                    Маршруты
+                </h1>
+                
+                <!-- Desktop Nav -->
+                <div class="hidden md:flex items-center gap-6">
+                    <a
+                        href="#/dashboard"
+                        class="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+                    >
+                        <Map size={18} />
+                        <span class="text-sm">Карта</span>
+                    </a>
+                    <a
+                        href="#/profile"
+                        class="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+                    >
+                        <User size={18} />
+                        <span>Профиль</span>
+                    </a>
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <button
+                    on:click={() => mobileMenuOpen = !mobileMenuOpen}
+                    class="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
                 >
-                    <User size={18} />
-                    <span>Профиль</span>
-                </a>
+                    {#if mobileMenuOpen}
+                        <X size={24} />
+                    {:else}
+                        <Menu size={24} />
+                    {/if}
+                </button>
             </div>
+            
+            <!-- Mobile Menu -->
+            {#if mobileMenuOpen}
+                <div class="md:hidden pb-4 space-y-2">
+                    <a
+                        href="#/dashboard"
+                        class="flex items-center gap-3 p-3 hover:bg-white/5 rounded-lg transition-colors"
+                        on:click={() => mobileMenuOpen = false}
+                    >
+                        <Map size={20} class="text-amber-500" />
+                        <span>Карта</span>
+                    </a>
+                    <a
+                        href="#/profile"
+                        class="flex items-center gap-3 p-3 hover:bg-white/5 rounded-lg transition-colors"
+                        on:click={() => mobileMenuOpen = false}
+                    >
+                        <User size={20} class="text-amber-500" />
+                        <span>Профиль</span>
+                    </a>
+                </div>
+            {/if}
         </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
         {#if loading}
             <div class="flex justify-center p-12">

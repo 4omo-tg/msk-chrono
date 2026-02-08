@@ -16,6 +16,10 @@
         Camera,
         Map as MapIcon,
         HelpCircle,
+        Menu,
+        X,
+        ChevronDown,
+        ChevronUp,
     } from "lucide-svelte";
 
     let selectedPOI: any = null;
@@ -49,6 +53,10 @@
 
     // Onboarding state
     let showOnboarding: boolean = false;
+
+    // Mobile state
+    let mobileMenuOpen: boolean = false;
+    let mobileSidebarOpen: boolean = false;
 
     onMount(async () => {
         if (!isAuthenticated()) {
@@ -229,6 +237,11 @@
         if (selectedPOI && selectedPOI.id) {
             loadQuizzesForPOI(selectedPOI.id);
         }
+        
+        // Open sidebar on mobile when POI is selected
+        if (window.innerWidth < 1024) {
+            mobileSidebarOpen = true;
+        }
     }
 
     // Reactive totalPoints calculation - fetch route data when activeRouteProgress changes
@@ -279,16 +292,17 @@
 <div class="min-h-screen bg-neutral-900 text-white flex flex-col">
     <!-- Navbar -->
     <nav
-        class="h-16 bg-neutral-900/80 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-8 z-50"
+        class="h-14 lg:h-16 bg-neutral-900/80 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-4 lg:px-8 z-50 fixed top-0 left-0 right-0"
     >
-        <div class="flex items-center gap-8">
+        <div class="flex items-center gap-4 lg:gap-8">
             <span
-                class="text-xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent"
+                class="text-lg lg:text-xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent"
                 >Moscow Chrono</span
             >
 
+            <!-- XP Bar - Hidden on mobile, visible on desktop -->
             <div
-                class="bg-white/5 px-4 py-1 rounded-full border border-white/10 flex items-center gap-3"
+                class="hidden md:flex bg-white/5 px-4 py-1 rounded-full border border-white/10 items-center gap-3"
             >
                 <div class="flex items-center gap-1.5">
                     <span class="text-[10px] uppercase font-bold text-gray-500"
@@ -312,7 +326,16 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-4">
+        <!-- Mobile: Compact XP display -->
+        <div class="flex md:hidden items-center gap-2">
+            <div class="bg-amber-500/20 px-2 py-1 rounded-full flex items-center gap-1">
+                <span class="text-xs font-bold text-amber-500">Ур.{currentLevel}</span>
+                <span class="text-[10px] text-gray-400">{Math.floor(safeUserXP)} XP</span>
+            </div>
+        </div>
+
+        <!-- Desktop Menu -->
+        <div class="hidden lg:flex items-center gap-4">
             <a
                 href="#/routes"
                 class="hover:text-amber-400 text-sm font-medium transition-colors"
@@ -341,13 +364,63 @@
                 <span>Выйти</span>
             </button>
         </div>
+
+        <!-- Mobile Menu Button -->
+        <button
+            on:click={() => mobileMenuOpen = !mobileMenuOpen}
+            class="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+        >
+            {#if mobileMenuOpen}
+                <X size={24} />
+            {:else}
+                <Menu size={24} />
+            {/if}
+        </button>
     </nav>
 
-    <div class="flex-1 flex overflow-hidden">
-        <!-- Sidebar - только если есть активный маршрут -->
+    <!-- Mobile Menu Dropdown -->
+    {#if mobileMenuOpen}
+        <div class="fixed top-14 left-0 right-0 bg-neutral-900/95 backdrop-blur-md border-b border-white/10 z-40 lg:hidden">
+            <div class="p-4 space-y-2">
+                <a
+                    href="#/routes"
+                    class="flex items-center gap-3 p-3 hover:bg-white/5 rounded-lg transition-colors"
+                    on:click={() => mobileMenuOpen = false}
+                >
+                    <MapIcon size={20} class="text-amber-500" />
+                    <span>Маршруты</span>
+                </a>
+                <button
+                    on:click={() => { showOnboarding = true; mobileMenuOpen = false; }}
+                    class="flex items-center gap-3 p-3 hover:bg-white/5 rounded-lg transition-colors w-full text-left"
+                >
+                    <HelpCircle size={20} class="text-amber-500" />
+                    <span>Помощь</span>
+                </button>
+                <a
+                    href="#/profile"
+                    class="flex items-center gap-3 p-3 hover:bg-white/5 rounded-lg transition-colors"
+                    on:click={() => mobileMenuOpen = false}
+                >
+                    <User size={20} class="text-amber-500" />
+                    <span>Профиль</span>
+                </a>
+                <button
+                    on:click={() => { logout(); mobileMenuOpen = false; }}
+                    class="flex items-center gap-3 p-3 hover:bg-red-500/10 rounded-lg transition-colors w-full text-left text-red-400"
+                >
+                    <LogOut size={20} />
+                    <span>Выйти</span>
+                </button>
+            </div>
+        </div>
+    {/if}
+
+    <div class="flex-1 flex overflow-hidden pt-14 lg:pt-16">
+        <!-- Desktop Sidebar - только если есть активный маршрут -->
         {#if activeRouteProgress}
         <div
-            class="w-96 bg-neutral-800 border-r border-white/10 p-6 overflow-y-auto"
+            class="hidden lg:block w-96 bg-neutral-800 border-r border-white/10 p-6 overflow-y-auto"
         >
             {#if selectedPOI}
                     <div
@@ -531,7 +604,135 @@
                     </div>
                 </div>
             {/if}
+
+            <!-- Mobile: FAB to show progress when no POI selected -->
+            {#if activeRouteProgress && !selectedPOI}
+                <button
+                    on:click={() => mobileSidebarOpen = true}
+                    class="lg:hidden fixed bottom-6 right-6 z-30 bg-amber-500 text-black p-4 rounded-full shadow-lg shadow-amber-500/30 flex items-center gap-2"
+                >
+                    <Info size={24} />
+                </button>
+            {/if}
         </div>
+
+        <!-- Mobile Bottom Sheet -->
+        {#if activeRouteProgress}
+            <div
+                class="lg:hidden fixed bottom-0 left-0 right-0 z-40 transition-transform duration-300 ease-out"
+                class:translate-y-full={!mobileSidebarOpen}
+                class:translate-y-0={mobileSidebarOpen}
+            >
+                <!-- Backdrop -->
+                {#if mobileSidebarOpen}
+                    <button
+                        class="fixed inset-0 bg-black/50 -z-10"
+                        on:click={() => mobileSidebarOpen = false}
+                        aria-label="Закрыть панель"
+                    ></button>
+                {/if}
+                
+                <div class="bg-neutral-800 rounded-t-3xl border-t border-white/10 max-h-[80vh] overflow-y-auto">
+                    <!-- Handle -->
+                    <button
+                        on:click={() => mobileSidebarOpen = !mobileSidebarOpen}
+                        class="w-full py-3 flex justify-center"
+                        aria-label="Свернуть/развернуть панель"
+                    >
+                        <div class="w-12 h-1 bg-gray-600 rounded-full"></div>
+                    </button>
+                    
+                    <div class="px-4 pb-6">
+                        {#if selectedPOI}
+                            <!-- POI Details -->
+                            <div class="mb-4 flex items-center justify-between border-b border-white/10 pb-4">
+                                <h2 class="text-lg font-bold text-amber-500 flex-1 pr-4">
+                                    {selectedPOI.title}
+                                </h2>
+                                <button
+                                    on:click={() => { selectedPOI = null; mobileSidebarOpen = false; }}
+                                    class="text-gray-500 hover:text-white p-2"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div class="space-y-4">
+                                <!-- Check-in Button -->
+                                <button
+                                    on:click={handleBeforeCheckIn}
+                                    disabled={!selectedPOI.isCurrent}
+                                    class="w-full py-4 rounded-xl font-black text-lg transition-all transform flex items-center justify-center gap-3 shadow-xl
+                                    {selectedPOI.isCurrent
+                                        ? 'bg-amber-500 hover:bg-amber-600 text-black active:scale-95 shadow-amber-500/30'
+                                        : 'bg-neutral-700 text-gray-500 cursor-not-allowed shadow-none'}"
+                                >
+                                    {#if selectedPOI.isVisited}
+                                        <span>✓ ТОЧКА ПРОЙДЕНА</span>
+                                    {:else if selectedPOI.isCurrent}
+                                        <Camera size={20} />
+                                        <span>Я ЗДЕСЬ!</span>
+                                        <span class="bg-black/20 px-2 py-0.5 rounded text-xs">+50 XP</span>
+                                    {:else}
+                                        <span>ЗАБЛОКИРОВАНО</span>
+                                    {/if}
+                                </button>
+
+                                <!-- Photo Gallery -->
+                                <PhotoGallery poi={selectedPOI} />
+
+                                <!-- Description -->
+                                <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                                    <div class="flex items-center gap-2 mb-2 text-amber-400">
+                                        <Info size={16} />
+                                        <span class="text-sm font-bold uppercase tracking-wider">Историческая справка</span>
+                                    </div>
+                                    <p class="text-sm text-gray-300 leading-relaxed italic">
+                                        {selectedPOI.description}
+                                    </p>
+                                </div>
+
+                                <!-- Quiz Button -->
+                                {#if currentQuizzes.length > 0}
+                                    <button
+                                        on:click={() => { currentQuizIndex = 0; showQuiz = true; mobileSidebarOpen = false; }}
+                                        class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-3"
+                                    >
+                                        <span class="text-xl">🎯</span>
+                                        <span>Пройти квиз ({currentQuizzes.length})</span>
+                                        <span class="bg-black/20 px-2 py-0.5 rounded text-xs ml-auto">+{getTotalQuizXP(currentQuizzes)} XP</span>
+                                    </button>
+                                {/if}
+                            </div>
+                        {:else}
+                            <!-- Progress Info -->
+                            <div class="mb-4">
+                                <h2 class="text-lg font-bold mb-4 text-gray-300">
+                                    Текущая экспедиция
+                                </h2>
+                                <div class="bg-white/5 p-5 rounded-2xl border border-white/10">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <span class="text-xs font-bold uppercase tracking-tighter text-gray-500">Прогресс</span>
+                                        <span class="text-sm font-black text-amber-500">
+                                            {activeRouteProgress.completed_points_count} / {totalPoints}
+                                        </span>
+                                    </div>
+                                    <div class="w-full h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5">
+                                        <div
+                                            class="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                                            style="width: {(activeRouteProgress.completed_points_count / (totalPoints || 1)) * 100}%"
+                                        ></div>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-3 text-center">
+                                    Нажмите на маркер на карте
+                                </p>
+                            </div>
+                        {/if}
+                    </div>
+                </div>
+            </div>
+        {/if}
     </div>
 
     {#if routeCompleted}

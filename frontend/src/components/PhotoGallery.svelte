@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { Clock, Camera, Image, Maximize2, ChevronLeft, ChevronRight, X } from 'lucide-svelte';
+    import PanoramaViewer from './PanoramaViewer.svelte';
     
     export let poi: any;
     
@@ -234,47 +235,17 @@
     {#if activeTab === 'panorama' && hasPanorama}
         <div class="space-y-3">
             {#if hasHistoricPanorama}
-                <div 
-                    class="relative overflow-hidden rounded-lg border border-white/10 cursor-pointer group"
-                    on:click={() => openGalleryModal([poi.historic_panorama_url], 0, 'Историческая панорама')}
-                    on:keydown={(e) => e.key === 'Enter' && openGalleryModal([poi.historic_panorama_url], 0, 'Историческая панорама')}
-                    role="button"
-                    tabindex="0"
-                >
-                    <img
-                        src={poi.historic_panorama_url}
-                        alt="Историческая панорама"
-                        class="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                        <div class="flex items-center gap-1.5 text-xs text-gray-300">
-                            <Clock size={12} />
-                            <span>Историческая панорама</span>
-                        </div>
-                    </div>
-                </div>
+                <PanoramaViewer 
+                    url={poi.historic_panorama_url} 
+                    title="Историческая панорама (360°)" 
+                />
             {/if}
             
             {#if hasModernPanorama}
-                <div 
-                    class="relative overflow-hidden rounded-lg border border-white/10 cursor-pointer group"
-                    on:click={() => openGalleryModal([poi.modern_panorama_url], 0, 'Современная панорама')}
-                    on:keydown={(e) => e.key === 'Enter' && openGalleryModal([poi.modern_panorama_url], 0, 'Современная панорама')}
-                    role="button"
-                    tabindex="0"
-                >
-                    <img
-                        src={poi.modern_panorama_url}
-                        alt="Современная панорама"
-                        class="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                        <div class="flex items-center gap-1.5 text-xs text-amber-400">
-                            <Camera size={12} />
-                            <span>Современная панорама</span>
-                        </div>
-                    </div>
-                </div>
+                <PanoramaViewer 
+                    url={poi.modern_panorama_url} 
+                    title="Современная панорама (360°)" 
+                />
             {/if}
         </div>
     {/if}

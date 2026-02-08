@@ -7,7 +7,7 @@
         User, Award, MapPin, Route, Star, Trophy, Target, Compass,
         Flame, Zap, Crown, Gem, BookOpen, Camera, Clock, Mountain,
         Footprints, Flag, Medal, Sparkles, X, Lock, Check, Info,
-        Settings, Users, Edit
+        Settings, Users, Edit, Map
     } from "lucide-svelte";
 
     let user: any = null;
@@ -188,36 +188,44 @@
     $: displayXp = user && typeof user.xp === 'number' ? Math.floor(user.xp) : 0;
 </script>
 
-<div class="min-h-screen bg-neutral-900 text-white p-4 sm:p-8">
-    <div class="max-w-2xl mx-auto">
-        <div class="flex justify-between items-center mb-6">
-            <h1
-                class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent"
-            >
-                Профиль
-            </h1>
-            <div class="flex gap-2">
-                <a
-                    href="#/friends"
-                    class="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
-                    title="Друзья"
+<div class="min-h-screen bg-neutral-900 text-white">
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-neutral-900/80 backdrop-blur-md border-b border-white/10">
+        <div class="max-w-2xl mx-auto px-4 sm:px-6">
+            <div class="flex justify-between items-center h-14">
+                <h1
+                    class="text-xl sm:text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent"
                 >
-                    <Users size={20} />
-                </a>
-                <a
-                    href="#/profile/edit"
-                    class="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
-                    title="Настройки"
-                >
-                    <Settings size={20} />
-                </a>
-                <a
-                    href="#/dashboard"
-                    class="text-gray-400 hover:text-white transition-colors p-2"
-                    >В дашборд</a
-                >
+                    Профиль
+                </h1>
+                <div class="flex gap-1 sm:gap-2">
+                    <a
+                        href="#/friends"
+                        class="p-2 hover:bg-neutral-800 rounded-lg transition-colors"
+                        title="Друзья"
+                    >
+                        <Users size={20} />
+                    </a>
+                    <a
+                        href="#/profile/edit"
+                        class="p-2 hover:bg-neutral-800 rounded-lg transition-colors"
+                        title="Настройки"
+                    >
+                        <Settings size={20} />
+                    </a>
+                    <a
+                        href="#/dashboard"
+                        class="p-2 hover:bg-neutral-800 rounded-lg transition-colors text-sm flex items-center"
+                    >
+                        <span class="hidden sm:inline text-gray-400">Карта</span>
+                        <Route size={20} class="sm:hidden" />
+                    </a>
+                </div>
             </div>
         </div>
+    </header>
+
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
 
         {#if user}
             <div
@@ -294,7 +302,7 @@
                                 {unlockedAchievements.length} / {achievements.length}
                             </span>
                         </div>
-                        <div class="grid grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-neutral-800">
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 max-h-[60vh] sm:max-h-[400px] overflow-y-auto pr-1 sm:pr-2 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-neutral-800">
                             {#each achievements as achievement}
                                 {@const colors = getColors(achievement.condition_type)}
                                 {@const progress = getProgress(achievement)}
