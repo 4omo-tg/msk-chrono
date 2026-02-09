@@ -64,10 +64,11 @@
         <div class="relative h-36 sm:h-48 bg-gradient-to-br from-amber-500/20 to-amber-600/10 flex items-center justify-center">
             <button
                 on:click={skip}
-                class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                class="absolute top-3 right-3 flex items-center gap-1.5 bg-black/40 hover:bg-black/60 text-gray-300 hover:text-white px-3 py-1.5 rounded-full transition-colors text-sm font-medium"
                 aria-label="Пропустить"
             >
-                <X size={24} />
+                <span>Пропустить</span>
+                <X size={16} />
             </button>
             
             <div class="w-16 h-16 sm:w-24 sm:h-24 bg-amber-500/20 rounded-full flex items-center justify-center border-2 border-amber-500/30">
