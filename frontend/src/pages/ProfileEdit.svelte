@@ -6,7 +6,7 @@
     import {
         User, Camera, Save, ArrowLeft, Sparkles, Crown, Award,
         Star, Trophy, Compass, Flame, BookOpen, Zap, Route,
-        Check, Lock, X, Eye, EyeOff, Users
+        Check, Lock, X, Eye, EyeOff, Users, Map
     } from "lucide-svelte";
 
     let user: any = null;
@@ -183,6 +183,10 @@
                 <ArrowLeft size={20} />
             </a>
             <h1 class="text-lg sm:text-xl font-bold truncate">Настройки</h1>
+            <div class="flex-1"></div>
+            <a href="#/dashboard" class="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700" title="Дашборд">
+                <Map size={20} />
+            </a>
         </div>
     </header>
     

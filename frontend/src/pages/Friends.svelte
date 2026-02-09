@@ -5,7 +5,7 @@
     import { onMount } from "svelte";
     import {
         Users, UserPlus, Search, Check, X, ArrowLeft, User,
-        Clock, Send, Inbox, ChevronRight
+        Clock, Send, Inbox, ChevronRight, Map
     } from "lucide-svelte";
 
     let friends: any[] = [];
@@ -130,6 +130,10 @@
                 <ArrowLeft size={20} />
             </a>
             <h1 class="text-xl font-bold">Друзья</h1>
+            <div class="flex-1"></div>
+            <a href="#/dashboard" class="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700" title="Дашборд">
+                <Map size={20} />
+            </a>
         </div>
     </header>
 

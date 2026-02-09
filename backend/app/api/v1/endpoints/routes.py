@@ -226,10 +226,13 @@ async def delete_route(
     """
     Delete route. Only superusers.
     """
-    # Fetch route with points to return schema
+    # Fetch route with points and photos to return schema
     result = await db.execute(
         select(models.Route)
-        .options(selectinload(models.Route.points))
+        .options(
+            selectinload(models.Route.points)
+            .selectinload(models.PointOfInterest.photos)
+        )
         .where(models.Route.id == route_id)
     )
     route = result.scalars().first()
@@ -248,6 +251,20 @@ async def delete_route(
         points=points_schema
     )
 
-    await db.delete(route)
+    # Delete via SQL to avoid lazy-load / MissingGreenlet issues
+    from sqlalchemy import delete as sql_delete
+    await db.execute(
+        sql_delete(models.route_poi_association).where(
+            models.route_poi_association.c.route_id == route_id
+        )
+    )
+    await db.execute(
+        sql_delete(models.UserProgress).where(
+            models.UserProgress.route_id == route_id
+        )
+    )
+    await db.execute(
+        sql_delete(models.Route).where(models.Route.id == route_id)
+    )
     await db.commit()
     return route_schema

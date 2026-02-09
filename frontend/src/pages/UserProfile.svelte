@@ -5,7 +5,7 @@
     import { onMount } from "svelte";
     import {
         User, Award, MapPin, Route, Star, Trophy, ArrowLeft,
-        UserPlus, UserCheck, Clock, Calendar, Flame, Footprints
+        UserPlus, UserCheck, Clock, Calendar, Flame, Footprints, Map
     } from "lucide-svelte";
 
     export let params: { id: string } = { id: '' };
@@ -112,6 +112,10 @@
                 <ArrowLeft size={20} />
             </button>
             <h1 class="text-xl font-bold">Профиль</h1>
+            <div class="flex-1"></div>
+            <a href="#/dashboard" class="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700" title="Дашборд">
+                <Map size={20} />
+            </a>
         </div>
     </header>
 
