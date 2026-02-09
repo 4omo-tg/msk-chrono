@@ -58,7 +58,7 @@
     }
 </script>
 
-<div class="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+<div class="fixed inset-0 z-[200] bg-gradient-to-br from-neutral-900/95 via-amber-950/40 to-neutral-900/95 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
     <div class="bg-neutral-800 border border-white/10 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden max-h-[95vh] overflow-y-auto">
         <!-- Header -->
         <div class="relative h-36 sm:h-48 bg-gradient-to-br from-amber-500/20 to-amber-600/10 flex items-center justify-center">
