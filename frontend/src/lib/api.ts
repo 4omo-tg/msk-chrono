@@ -8,6 +8,10 @@ export async function apiFetch(
     url: string,
     options: RequestInit = {}
 ): Promise<Response> {
+    // Normalize URL: strip trailing slash to avoid 307 redirects losing auth headers
+    if (url.length > 1 && url.endsWith('/')) {
+        url = url.slice(0, -1);
+    }
     const token = localStorage.getItem('token');
     
     const headers: HeadersInit = {
