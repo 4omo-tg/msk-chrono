@@ -40,10 +40,10 @@ async def init_db() -> None:
             poi = PointOfInterest(
                 title="Red Square",
                 description="The heart of Moscow.",
-                # Historic image placeholder
                 historic_image_url="https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Red_square_moscow.JPG/1200px-Red_square_moscow.JPG",
                 modern_image_url="https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Red_square_moscow.JPG/1200px-Red_square_moscow.JPG",
-                location="POINT(37.6208 55.7539)" 
+                latitude=55.7539,
+                longitude=37.6208,
             )
             db.add(poi)
             await db.commit()
@@ -59,7 +59,8 @@ async def init_db() -> None:
              poi2 = PointOfInterest(
                 title="Bolshoi Theatre",
                 description="Historic theatre.",
-                location="POINT(37.6186 55.7602)"
+                latitude=55.7602,
+                longitude=37.6186,
              )
              db.add(poi2)
              await db.commit()

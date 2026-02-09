@@ -14,6 +14,7 @@ from app import models, schemas
 from app.api import deps
 from app.core import security
 from app.core.config import settings
+from app.core.runtime_settings import get_setting
 
 router = APIRouter()
 
@@ -32,9 +33,10 @@ class TelegramWidgetAuth(BaseModel):
     hash: str
 
 
-def verify_telegram_hash(data: TelegramWidgetAuth) -> bool:
+async def verify_telegram_hash(data: TelegramWidgetAuth, db) -> bool:
     """Verify Telegram Login Widget hash"""
-    if not settings.TELEGRAM_BOT_TOKEN:
+    bot_token = await get_setting(db, "TELEGRAM_BOT_TOKEN")
+    if not bot_token:
         return False
     
     # Check if auth_date is not too old (24 hours)
@@ -58,7 +60,7 @@ def verify_telegram_hash(data: TelegramWidgetAuth) -> bool:
     data_check_string = '\n'.join(f'{k}={v}' for k, v in sorted(check_dict.items()))
     
     # Secret key is SHA256 of bot token
-    secret_key = hashlib.sha256(settings.TELEGRAM_BOT_TOKEN.encode()).digest()
+    secret_key = hashlib.sha256(bot_token.encode()).digest()
     
     # Calculate HMAC-SHA256
     calculated_hash = hmac.new(
@@ -225,9 +227,12 @@ async def telegram_code_auth(
 
 
 @router.get("/telegram/bot-username")
-async def get_telegram_bot_username() -> dict:
+async def get_telegram_bot_username(
+    db: AsyncSession = Depends(deps.get_db),
+) -> dict:
     """Get Telegram bot username for auth link"""
-    return {"bot_username": settings.TELEGRAM_BOT_USERNAME}
+    bot_username = await get_setting(db, "TELEGRAM_BOT_USERNAME")
+    return {"bot_username": bot_username}
 
 
 class TelegramAuthSession(BaseModel):
@@ -265,7 +270,8 @@ async def init_telegram_auth(
     )
     await db.commit()
     
-    bot_link = f"https://t.me/{settings.TELEGRAM_BOT_USERNAME}?start={session_id}"
+    bot_username = await get_setting(db, "TELEGRAM_BOT_USERNAME")
+    bot_link = f"https://t.me/{bot_username}?start={session_id}"
     
     return {
         "session_id": session_id,
@@ -408,7 +414,7 @@ async def telegram_widget_auth(
     Creates a new user if not exists.
     """
     # Verify hash
-    if not verify_telegram_hash(auth_data):
+    if not await verify_telegram_hash(auth_data, db):
         raise HTTPException(
             status_code=400,
             detail="Invalid Telegram authentication"

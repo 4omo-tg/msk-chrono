@@ -46,6 +46,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        navigateFallbackDenylist: [/^\/admin/, /^\/api/, /^\/docs/, /^\/openapi/, /^\/uploads/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.tile\.openstreetmap\.org\/.*/i,

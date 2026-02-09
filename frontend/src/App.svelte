@@ -10,6 +10,8 @@
   import Friends from "./pages/Friends.svelte";
   import UserProfile from "./pages/UserProfile.svelte";
   import TelegramCallback from "./pages/TelegramCallback.svelte";
+  import TimeMachine from "./pages/TimeMachine.svelte";
+  import Article from "./pages/Article.svelte";
   import InstallPrompt from "./components/InstallPrompt.svelte";
 
   const routes = {
@@ -22,6 +24,8 @@
     "/profile/edit": ProfileEdit,
     "/friends": Friends,
     "/user/:id": UserProfile,
+    "/time-machine": TimeMachine,
+    "/article/:id": Article,
     "/telegram-callback": TelegramCallback,
   };
 </script>

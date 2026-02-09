@@ -11,7 +11,8 @@ import os
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Backend for Moscow Chrono Walker - Historical Exploration Game",
-    version="0.1.0"
+    version="0.1.0",
+    redirect_slashes=True,
 )
 
 # Set all CORS enabled origins
@@ -53,25 +54,41 @@ if FRONTEND_DIR and os.path.exists(os.path.join(FRONTEND_DIR, "assets")):
 app.include_router(api_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix="/admin")
 
+# SPA fallback — serve index.html for frontend routes
+# Must be AFTER all API/admin routers
+if FRONTEND_DIR:
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.responses import Response as StarletteResponse
+    import mimetypes
 
-# Serve frontend for all non-API routes (SPA fallback)
-@app.get("/{full_path:path}")
-async def serve_frontend(request: Request, full_path: str):
-    # Skip API and admin routes
-    if full_path.startswith("api/") or full_path.startswith("admin/") or full_path.startswith("uploads/") or full_path.startswith("assets/") or full_path.startswith("docs") or full_path.startswith("openapi"):
-        return {"detail": "Not Found"}
-    
-    if not FRONTEND_DIR:
-        return {"message": "Welcome to Moscow Chrono Walker API", "docs": "/docs"}
-    
-    # Try to serve static file first
-    file_path = os.path.join(FRONTEND_DIR, full_path)
-    if os.path.isfile(file_path):
-        return FileResponse(file_path)
-    
-    # Fallback to index.html for SPA routing
-    index_path = os.path.join(FRONTEND_DIR, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    
-    return {"message": "Welcome to Moscow Chrono Walker API", "docs": "/docs"}
+    class SPAMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            # If the response is 404 and it's NOT an API/admin/docs request,
+            # serve the SPA index.html instead
+            path = request.url.path
+            if (
+                response.status_code == 404
+                and request.method == "GET"
+                and not path.startswith("/api/")
+                and not path.startswith("/admin")
+                and not path.startswith("/docs")
+                and not path.startswith("/openapi")
+                and not path.startswith("/uploads/")
+            ):
+                # Try static file first
+                file_path = os.path.join(FRONTEND_DIR, path.lstrip("/"))
+                if os.path.isfile(file_path):
+                    return FileResponse(file_path)
+                # SPA fallback
+                index_path = os.path.join(FRONTEND_DIR, "index.html")
+                if os.path.exists(index_path):
+                    return FileResponse(index_path)
+            return response
+
+    app.add_middleware(SPAMiddleware)
+
+    # Serve root
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))

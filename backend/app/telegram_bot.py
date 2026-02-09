@@ -1,8 +1,20 @@
-"""Telegram Bot for authentication"""
+"""Telegram Bot for authentication (aiogram 3)"""
+import asyncio
+import logging
+
 import psycopg2
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from aiogram import Bot, Dispatcher, F, Router
+from aiogram.types import (
+    Message, CallbackQuery,
+    InlineKeyboardButton, InlineKeyboardMarkup,
+)
+from aiogram.filters import Command, CommandStart
+from aiogram.enums import ParseMode
+
 from app.core.config import settings
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Database connection string (sync version for bot)
 DB_URL = settings.DATABASE_URL.replace('+asyncpg', '').replace('postgresql+asyncpg', 'postgresql')
@@ -10,9 +22,12 @@ DB_URL = settings.DATABASE_URL.replace('+asyncpg', '').replace('postgresql+async
 # Site URL from config
 SITE_URL = settings.SITE_URL
 
+router = Router()
+
+
+# ── DB helpers ──────────────────────────────────────────────
 
 def check_user_exists(telegram_id: int) -> bool:
-    """Check if user with this telegram_id already exists"""
     conn = psycopg2.connect(DB_URL)
     try:
         cur = conn.cursor()
@@ -23,26 +38,25 @@ def check_user_exists(telegram_id: int) -> bool:
 
 
 def update_auth_session(session_id: str, user_data: dict) -> bool:
-    """Update auth session with user data"""
     conn = psycopg2.connect(DB_URL)
     try:
         cur = conn.cursor()
         cur.execute("""
-            UPDATE telegram_auth_sessions 
-            SET telegram_id = %s, 
-                telegram_username = %s, 
-                telegram_first_name = %s, 
+            UPDATE telegram_auth_sessions
+            SET telegram_id = %s,
+                telegram_username = %s,
+                telegram_first_name = %s,
                 telegram_photo_url = %s
-            WHERE session_id = %s 
+            WHERE session_id = %s
               AND created_at > NOW() - INTERVAL '10 minutes'
               AND telegram_id IS NULL
             RETURNING id
         """, (
-            user_data['telegram_id'], 
-            user_data['username'], 
-            user_data['first_name'], 
+            user_data['telegram_id'],
+            user_data['username'],
+            user_data['first_name'],
             user_data['photo_url'],
-            session_id
+            session_id,
         ))
         result = cur.fetchone()
         conn.commit()
@@ -52,13 +66,12 @@ def update_auth_session(session_id: str, user_data: dict) -> bool:
 
 
 def get_session_status(session_id: str) -> str:
-    """Get session status: 'valid', 'used', 'expired', 'not_found'"""
     conn = psycopg2.connect(DB_URL)
     try:
         cur = conn.cursor()
         cur.execute("""
             SELECT telegram_id, created_at > NOW() - INTERVAL '10 minutes' as valid
-            FROM telegram_auth_sessions 
+            FROM telegram_auth_sessions
             WHERE session_id = %s
         """, (session_id,))
         row = cur.fetchone()
@@ -74,18 +87,19 @@ def get_session_status(session_id: str) -> str:
         conn.close()
 
 
-async def get_user_data(user, context) -> dict:
-    """Get user data including photo URL"""
+# ── Helpers ─────────────────────────────────────────────────
+
+async def get_user_data(bot: Bot, user) -> dict:
     photo_url = None
     try:
-        photos = await user.get_profile_photos(limit=1)
+        photos = await bot.get_user_profile_photos(user.id, limit=1)
         if photos.total_count > 0:
             photo = photos.photos[0][-1]
-            file = await context.bot.get_file(photo.file_id)
+            file = await bot.get_file(photo.file_id)
             photo_url = file.file_path
     except Exception:
         pass
-    
+
     return {
         'telegram_id': user.id,
         'username': user.username,
@@ -94,93 +108,65 @@ async def get_user_data(user, context) -> dict:
     }
 
 
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /start command - show auth button"""
-    user = update.effective_user
-    
-    # Check if this is a deep link with session_id
-    if context.args and len(context.args) > 0:
-        session_id = context.args[0]
-        
-        # Check session status
-        status = get_session_status(session_id)
-        
-        if status == 'not_found' or status == 'expired':
-            await update.message.reply_text(
-                "\u26A0\uFE0F <b>Сессия истекла</b>\n\n"
-                "Пожалуйста, начните авторизацию заново на сайте.",
-                parse_mode='HTML'
-            )
-            return
-        
-        if status == 'used':
-            await update.message.reply_text(
-                "\u2705 <b>Вы уже авторизованы</b>\n\n"
-                "Вернитесь на сайт - вход выполнен.",
-                parse_mode='HTML'
-            )
-            return
-        
-        # Session is valid - show auth button
-        user_exists = check_user_exists(user.id)
-        button_text = "\u2705 Войти" if user_exists else "\u2705 Зарегистрироваться и войти"
-        
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(button_text, callback_data=f"auth:{session_id}")]
-        ])
-        
-        await update.message.reply_text(
-            f"\U0001F3DB <b>Moscow Chrono Walker</b>\n\n"
-            f"Привет, {user.first_name}!\n\n"
-            f"Нажмите кнопку ниже для авторизации:",
-            parse_mode='HTML',
-            reply_markup=keyboard
+# ── Handlers ────────────────────────────────────────────────
+
+@router.message(CommandStart(deep_link=True))
+async def start_deep_link(message: Message, bot: Bot):
+    """Handle /start with deep-link session_id."""
+    user = message.from_user
+    session_id = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else None
+
+    if not session_id:
+        return await start_no_link(message)
+
+    status = get_session_status(session_id)
+
+    if status in ('not_found', 'expired'):
+        await message.answer(
+            "\u26A0\uFE0F <b>Сессия истекла</b>\n\n"
+            "Пожалуйста, начните авторизацию заново на сайте.",
+            parse_mode=ParseMode.HTML,
         )
         return
-    
-    # No session - just welcome message
-    await update.message.reply_text(
-        "\U0001F3DB <b>Moscow Chrono Walker</b>\n\n"
-        "Для авторизации перейдите на сайт и нажмите \"Войти через Telegram\".\n\n"
-        f"\U0001F517 {SITE_URL}",
-        parse_mode='HTML'
+
+    if status == 'used':
+        await message.answer(
+            "\u2705 <b>Вы уже авторизованы</b>\n\n"
+            "Вернитесь на сайт — вход выполнен.",
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    user_exists = check_user_exists(user.id)
+    btn_text = "\u2705 Войти" if user_exists else "\u2705 Зарегистрироваться и войти"
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=btn_text, callback_data=f"auth:{session_id}")]
+    ])
+
+    await message.answer(
+        f"\U0001F3DB <b>Moscow Chrono Walker</b>\n\n"
+        f"Привет, {user.first_name}!\n\n"
+        f"Нажмите кнопку ниже для авторизации:",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb,
     )
 
 
-async def auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle auth button click"""
-    query = update.callback_query
-    await query.answer()
-    
-    data = query.data
-    if not data.startswith("auth:"):
-        return
-    
-    session_id = data[5:]  # Remove "auth:" prefix
-    user = update.effective_user
-    
-    # Get user data
-    user_data = await get_user_data(user, context)
-    
-    # Try to update session
-    if update_auth_session(session_id, user_data):
-        await query.edit_message_text(
-            f"\U0001F389 <b>Готово!</b>\n\n"
-            f"{user.first_name}, вы успешно авторизованы.\n"
-            f"Вернитесь на сайт - вход выполнен автоматически.",
-            parse_mode='HTML'
-        )
-    else:
-        await query.edit_message_text(
-            "\u26A0\uFE0F <b>Сессия истекла</b>\n\n"
-            "Пожалуйста, начните авторизацию заново на сайте.",
-            parse_mode='HTML'
-        )
+@router.message(CommandStart())
+async def start_no_link(message: Message):
+    """Handle plain /start (no deep link)."""
+    await message.answer(
+        "\U0001F3DB <b>Moscow Chrono Walker</b>\n\n"
+        "Для авторизации перейдите на сайт и нажмите \"Войти через Telegram\".\n\n"
+        f"\U0001F517 {SITE_URL}",
+        parse_mode=ParseMode.HTML,
+    )
 
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /help command"""
-    await update.message.reply_text(
+@router.message(Command("help"))
+async def help_command(message: Message):
+    await message.answer(
         "\U0001F3DB <b>Moscow Chrono Walker</b>\n\n"
         "Этот бот используется для авторизации на сайте.\n\n"
         "<b>Как войти:</b>\n"
@@ -188,24 +174,51 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "2. Нажмите \"Войти через Telegram\"\n"
         "3. В боте нажмите кнопку \"Войти\"\n"
         "4. Готово!",
-        parse_mode='HTML'
+        parse_mode=ParseMode.HTML,
     )
 
 
-def run_bot():
-    """Run the telegram bot"""
+@router.callback_query(F.data.startswith("auth:"))
+async def auth_callback(callback: CallbackQuery, bot: Bot):
+    await callback.answer()
+
+    session_id = callback.data[5:]  # strip "auth:"
+    user = callback.from_user
+
+    user_data = await get_user_data(bot, user)
+
+    if update_auth_session(session_id, user_data):
+        await callback.message.edit_text(
+            f"\U0001F389 <b>Готово!</b>\n\n"
+            f"{user.first_name}, вы успешно авторизованы.\n"
+            f"Вернитесь на сайт — вход выполнен автоматически.",
+            parse_mode=ParseMode.HTML,
+        )
+    else:
+        await callback.message.edit_text(
+            "\u26A0\uFE0F <b>Сессия истекла</b>\n\n"
+            "Пожалуйста, начните авторизацию заново на сайте.",
+            parse_mode=ParseMode.HTML,
+        )
+
+
+# ── Entry point ─────────────────────────────────────────────
+
+async def main():
     if not settings.TELEGRAM_BOT_TOKEN:
-        print("TELEGRAM_BOT_TOKEN not set, bot not started")
+        logger.error("TELEGRAM_BOT_TOKEN not set, bot not started")
         return
-    
-    application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
-    
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CallbackQueryHandler(auth_callback, pattern="^auth:"))
-    
-    print(f"Starting Telegram bot @{settings.TELEGRAM_BOT_USERNAME}")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+    bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+    dp = Dispatcher()
+    dp.include_router(router)
+
+    logger.info("Starting Telegram bot @%s", settings.TELEGRAM_BOT_USERNAME)
+    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+
+
+def run_bot():
+    asyncio.run(main())
 
 
 if __name__ == "__main__":

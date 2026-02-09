@@ -37,6 +37,13 @@ class User(Base):
     last_activity_date = Column(DateTime, nullable=True)  # Для подсчёта streak
     reputation = Column(Integer, default=0)  # Репутация от других игроков
     
+    # Economy
+    chrono_crystals = Column(Integer, server_default="5", nullable=False)
+    
+    # User location (last known / home)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+
     # Privacy settings
     profile_visibility = Column(String, default="public")  # public, friends, private
     show_on_leaderboard = Column(Boolean, default=True)

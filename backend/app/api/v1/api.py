@@ -2,7 +2,8 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     auth, users, pois, routes, progress, files, 
-    quizzes, verification, achievements, profile, friends, cosmetics, learning
+    quizzes, verification, achievements, profile, friends, cosmetics, learning,
+    time_machine, site_settings,
 )
 
 api_router = APIRouter()
@@ -19,3 +20,5 @@ api_router.include_router(quizzes.router, prefix="/quizzes", tags=["quizzes"])
 api_router.include_router(verification.router, prefix="/verification", tags=["verification"])
 api_router.include_router(achievements.router, prefix="/achievements", tags=["achievements"])
 api_router.include_router(learning.router, prefix="/learning", tags=["learning"])
+api_router.include_router(time_machine.router, prefix="/time-machine", tags=["time-machine"])
+api_router.include_router(site_settings.router, prefix="/settings", tags=["settings"])

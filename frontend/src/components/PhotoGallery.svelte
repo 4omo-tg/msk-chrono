@@ -1,26 +1,53 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
-    import { Clock, Camera, Image, Maximize2, ChevronLeft, ChevronRight, X } from 'lucide-svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
+    import { Clock, Camera, Image, Maximize2, ChevronLeft, ChevronRight, X, Calendar } from 'lucide-svelte';
     import PanoramaViewer from './PanoramaViewer.svelte';
     
     export let poi: any;
     
     const dispatch = createEventDispatcher();
     
-    // Tab state: 'historic' | 'modern' | 'panorama'
-    let activeTab: 'historic' | 'modern' | 'panorama' = 'historic';
+    // --- Year-based photos ---
+    interface YearPhoto {
+        id: number;
+        poi_id: number;
+        year: number;
+        image_url: string;
+        description: string | null;
+        source: string | null;
+    }
     
-    // Current image index for each gallery
-    let historicIndex = 0;
-    let modernIndex = 0;
+    // All photos from poi.photos (already loaded with POI)
+    $: allPhotos = (poi?.photos || []) as YearPhoto[];
     
-    // Modal state
-    let showModal = false;
-    let modalImages: string[] = [];
-    let modalIndex = 0;
-    let modalTitle = '';
+    // Extract unique sorted years
+    $: years = [...new Set(allPhotos.map(p => p.year))].sort((a, b) => a - b);
     
-    // Get arrays of images, falling back to single image if no gallery
+    // Selected year (default to first available)
+    let selectedYear: number | null = null;
+    $: if (years.length > 0 && (selectedYear === null || !years.includes(selectedYear))) {
+        selectedYear = years[0];
+    }
+    
+    // Photos for the selected year
+    $: yearPhotos = selectedYear !== null
+        ? allPhotos.filter(p => p.year === selectedYear)
+        : [];
+    
+    // Current photo index within selected year
+    let currentIndex = 0;
+    $: if (yearPhotos.length > 0 && currentIndex >= yearPhotos.length) {
+        currentIndex = 0;
+    }
+    // Reset index when year changes
+    $: selectedYear, currentIndex = 0;
+    
+    $: currentPhoto = yearPhotos[currentIndex] || null;
+    
+    // Has year-based photos?
+    $: hasYearPhotos = allPhotos.length > 0;
+    
+    // --- Legacy fallback (historic/modern tabs) ---
     $: historicImages = poi?.historic_images?.length > 0 
         ? poi.historic_images 
         : (poi?.historic_image_url ? [poi.historic_image_url] : []);
@@ -35,10 +62,29 @@
     $: hasModernPanorama = !!poi?.modern_panorama_url;
     $: hasPanorama = hasHistoricPanorama || hasModernPanorama;
     
+    // Legacy tab (only used when no year-based photos)
+    let legacyTab: 'historic' | 'modern' | 'panorama' = 'historic';
+    let historicIndex = 0;
+    let modernIndex = 0;
+    
+    // Modal state
+    let showModal = false;
+    let modalImages: string[] = [];
+    let modalIndex = 0;
+    let modalTitle = '';
+    
     function openGalleryModal(images: string[], index: number, title: string) {
         modalImages = images;
         modalIndex = index;
         modalTitle = title;
+        showModal = true;
+    }
+    
+    function openYearPhotoModal() {
+        if (!yearPhotos.length) return;
+        modalImages = yearPhotos.map(p => p.image_url);
+        modalIndex = currentIndex;
+        modalTitle = `Фотографии ${selectedYear} г.`;
         showModal = true;
     }
     
@@ -49,15 +95,11 @@
     }
     
     function nextImage() {
-        if (modalIndex < modalImages.length - 1) {
-            modalIndex++;
-        }
+        if (modalIndex < modalImages.length - 1) modalIndex++;
     }
     
     function prevImage() {
-        if (modalIndex > 0) {
-            modalIndex--;
-        }
+        if (modalIndex > 0) modalIndex--;
     }
     
     function handleKeydown(e: KeyboardEvent) {
@@ -66,188 +108,304 @@
         if (e.key === 'ArrowRight') nextImage();
         if (e.key === 'ArrowLeft') prevImage();
     }
+    
+    function selectYear(year: number) {
+        selectedYear = year;
+        currentIndex = 0;
+    }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
 
 <div class="space-y-3">
-    <!-- Tabs -->
-    <div class="flex bg-neutral-900 rounded-lg p-1 gap-1">
-        {#if hasHistoric}
-            <button
-                on:click={() => activeTab = 'historic'}
-                class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5
-                    {activeTab === 'historic' ? 'bg-neutral-700 text-white' : 'text-gray-400 hover:text-white'}"
-            >
-                <Clock size={14} />
-                Тогда
-                {#if historicImages.length > 1}
-                    <span class="bg-white/20 px-1.5 py-0.5 rounded text-[10px]">{historicImages.length}</span>
+    {#if hasYearPhotos}
+        <!-- ========== YEAR-BASED GALLERY ========== -->
+        
+        <!-- Year selector -->
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2 text-gray-400">
+                <Calendar size={14} />
+                <span class="text-xs font-bold uppercase tracking-wider">Год съёмки</span>
+            </div>
+            <div class="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-neutral-700">
+                {#each years as year}
+                    {@const count = allPhotos.filter(p => p.year === year).length}
+                    <button
+                        on:click={() => selectYear(year)}
+                        class="flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5
+                            {selectedYear === year
+                                ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
+                                : 'bg-neutral-800 text-gray-300 hover:bg-neutral-700 border border-white/5'}"
+                    >
+                        {year}
+                        {#if count > 1}
+                            <span class="text-[10px] px-1 py-0.5 rounded {selectedYear === year ? 'bg-black/20' : 'bg-white/10'}">{count}</span>
+                        {/if}
+                    </button>
+                {/each}
+            </div>
+        </div>
+        
+        <!-- Photo display -->
+        {#if currentPhoto}
+            <div class="relative">
+                <div 
+                    class="relative overflow-hidden rounded-lg border border-white/10 cursor-pointer group"
+                    on:click={openYearPhotoModal}
+                    on:keydown={(e) => e.key === 'Enter' && openYearPhotoModal()}
+                    role="button"
+                    tabindex="0"
+                >
+                    <img
+                        src={currentPhoto.image_url}
+                        alt="Фото {selectedYear} г."
+                        class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-amber-400 font-medium">{selectedYear} год</span>
+                            <span class="text-xs text-gray-400">{currentIndex + 1}/{yearPhotos.length}</span>
+                        </div>
+                        {#if currentPhoto.description}
+                            <p class="text-xs text-gray-300 mt-1 line-clamp-2">{currentPhoto.description}</p>
+                        {/if}
+                        {#if currentPhoto.source}
+                            <p class="text-[10px] text-gray-500 mt-0.5">© {currentPhoto.source}</p>
+                        {/if}
+                    </div>
+                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <div class="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                            <Maximize2 size={24} class="text-white" />
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Navigation arrows -->
+                {#if yearPhotos.length > 1}
+                    <button 
+                        class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1.5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        on:click|stopPropagation={() => currentIndex = Math.max(0, currentIndex - 1)}
+                        disabled={currentIndex === 0}
+                    >
+                        <ChevronLeft size={20} class="text-white" />
+                    </button>
+                    <button 
+                        class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1.5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        on:click|stopPropagation={() => currentIndex = Math.min(yearPhotos.length - 1, currentIndex + 1)}
+                        disabled={currentIndex === yearPhotos.length - 1}
+                    >
+                        <ChevronRight size={20} class="text-white" />
+                    </button>
                 {/if}
-            </button>
+            </div>
+            
+            <!-- Thumbnails -->
+            {#if yearPhotos.length > 1}
+                <div class="flex gap-2 overflow-x-auto pb-2">
+                    {#each yearPhotos as photo, i}
+                        <button
+                            class="flex-shrink-0 w-16 h-12 rounded-md overflow-hidden border-2 transition-all
+                                {i === currentIndex ? 'border-amber-500' : 'border-transparent hover:border-white/30'}"
+                            on:click={() => currentIndex = i}
+                        >
+                            <img src={photo.image_url} alt="Фото {i + 1}" class="w-full h-full object-cover" />
+                        </button>
+                    {/each}
+                </div>
+            {/if}
         {/if}
-        {#if hasModern}
-            <button
-                on:click={() => activeTab = 'modern'}
-                class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5
-                    {activeTab === 'modern' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}"
-            >
-                <Camera size={14} />
-                Сейчас
-                {#if modernImages.length > 1}
-                    <span class="bg-black/20 px-1.5 py-0.5 rounded text-[10px]">{modernImages.length}</span>
-                {/if}
-            </button>
-        {/if}
+        
+        <!-- Panoramas (if available) -->
         {#if hasPanorama}
-            <button
-                on:click={() => activeTab = 'panorama'}
-                class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5
-                    {activeTab === 'panorama' ? 'bg-purple-500 text-white' : 'text-gray-400 hover:text-white'}"
-            >
-                <Maximize2 size={14} />
-                Панорама
-            </button>
+            <div class="pt-2 border-t border-white/5">
+                <button
+                    on:click={() => legacyTab = 'panorama'}
+                    class="flex items-center gap-2 text-purple-400 hover:text-purple-300 text-sm font-medium transition-colors"
+                >
+                    <Maximize2 size={14} />
+                    Панорама 360°
+                </button>
+                {#if legacyTab === 'panorama'}
+                    <div class="mt-2 space-y-3">
+                        {#if hasHistoricPanorama}
+                            <PanoramaViewer url={poi.historic_panorama_url} title="Историческая панорама (360°)" />
+                        {/if}
+                        {#if hasModernPanorama}
+                            <PanoramaViewer url={poi.modern_panorama_url} title="Современная панорама (360°)" />
+                        {/if}
+                    </div>
+                {/if}
+            </div>
         {/if}
-    </div>
-    
-    <!-- Gallery Content -->
-    {#if activeTab === 'historic' && hasHistoric}
-        <div class="relative">
-            <!-- Main Image -->
-            <div 
-                class="relative overflow-hidden rounded-lg border border-white/10 cursor-pointer group"
-                on:click={() => openGalleryModal(historicImages, historicIndex, 'Исторические фото')}
-                on:keydown={(e) => e.key === 'Enter' && openGalleryModal(historicImages, historicIndex, 'Исторические фото')}
-                role="button"
-                tabindex="0"
-            >
-                <img
-                    src={historicImages[historicIndex]}
-                    alt="Историческое фото {historicIndex + 1}"
-                    class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                    <span class="text-xs text-gray-300">Историческое фото • {historicIndex + 1}/{historicImages.length}</span>
-                </div>
-                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div class="bg-white/20 backdrop-blur-sm rounded-full p-3">
-                        <Maximize2 size={24} class="text-white" />
+        
+    {:else}
+        <!-- ========== LEGACY GALLERY (historic/modern tabs) ========== -->
+        
+        <!-- Tabs -->
+        <div class="flex bg-neutral-900 rounded-lg p-1 gap-1">
+            {#if hasHistoric}
+                <button
+                    on:click={() => legacyTab = 'historic'}
+                    class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5
+                        {legacyTab === 'historic' ? 'bg-neutral-700 text-white' : 'text-gray-400 hover:text-white'}"
+                >
+                    <Clock size={14} />
+                    Тогда
+                    {#if historicImages.length > 1}
+                        <span class="bg-white/20 px-1.5 py-0.5 rounded text-[10px]">{historicImages.length}</span>
+                    {/if}
+                </button>
+            {/if}
+            {#if hasModern}
+                <button
+                    on:click={() => legacyTab = 'modern'}
+                    class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5
+                        {legacyTab === 'modern' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}"
+                >
+                    <Camera size={14} />
+                    Сейчас
+                    {#if modernImages.length > 1}
+                        <span class="bg-black/20 px-1.5 py-0.5 rounded text-[10px]">{modernImages.length}</span>
+                    {/if}
+                </button>
+            {/if}
+            {#if hasPanorama}
+                <button
+                    on:click={() => legacyTab = 'panorama'}
+                    class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5
+                        {legacyTab === 'panorama' ? 'bg-purple-500 text-white' : 'text-gray-400 hover:text-white'}"
+                >
+                    <Maximize2 size={14} />
+                    Панорама
+                </button>
+            {/if}
+        </div>
+        
+        <!-- Gallery Content -->
+        {#if legacyTab === 'historic' && hasHistoric}
+            <div class="relative">
+                <div 
+                    class="relative overflow-hidden rounded-lg border border-white/10 cursor-pointer group"
+                    on:click={() => openGalleryModal(historicImages, historicIndex, 'Исторические фото')}
+                    on:keydown={(e) => e.key === 'Enter' && openGalleryModal(historicImages, historicIndex, 'Исторические фото')}
+                    role="button"
+                    tabindex="0"
+                >
+                    <img
+                        src={historicImages[historicIndex]}
+                        alt="Историческое фото {historicIndex + 1}"
+                        class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                        <span class="text-xs text-gray-300">Историческое фото • {historicIndex + 1}/{historicImages.length}</span>
+                    </div>
+                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <div class="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                            <Maximize2 size={24} class="text-white" />
+                        </div>
                     </div>
                 </div>
+                
+                {#if historicImages.length > 1}
+                    <button 
+                        class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1.5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        on:click|stopPropagation={() => historicIndex = Math.max(0, historicIndex - 1)}
+                        disabled={historicIndex === 0}
+                    >
+                        <ChevronLeft size={20} class="text-white" />
+                    </button>
+                    <button 
+                        class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1.5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        on:click|stopPropagation={() => historicIndex = Math.min(historicImages.length - 1, historicIndex + 1)}
+                        disabled={historicIndex === historicImages.length - 1}
+                    >
+                        <ChevronRight size={20} class="text-white" />
+                    </button>
+                {/if}
             </div>
             
-            <!-- Navigation arrows -->
             {#if historicImages.length > 1}
-                <button 
-                    class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1.5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    on:click|stopPropagation={() => historicIndex = Math.max(0, historicIndex - 1)}
-                    disabled={historicIndex === 0}
-                >
-                    <ChevronLeft size={20} class="text-white" />
-                </button>
-                <button 
-                    class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1.5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    on:click|stopPropagation={() => historicIndex = Math.min(historicImages.length - 1, historicIndex + 1)}
-                    disabled={historicIndex === historicImages.length - 1}
-                >
-                    <ChevronRight size={20} class="text-white" />
-                </button>
-            {/if}
-        </div>
-        
-        <!-- Thumbnails -->
-        {#if historicImages.length > 1}
-            <div class="flex gap-2 overflow-x-auto pb-2">
-                {#each historicImages as img, i}
-                    <button
-                        class="flex-shrink-0 w-16 h-12 rounded-md overflow-hidden border-2 transition-all
-                            {i === historicIndex ? 'border-amber-500' : 'border-transparent hover:border-white/30'}"
-                        on:click={() => historicIndex = i}
-                    >
-                        <img src={img} alt="Фото {i + 1}" class="w-full h-full object-cover" />
-                    </button>
-                {/each}
-            </div>
-        {/if}
-    {/if}
-    
-    {#if activeTab === 'modern' && hasModern}
-        <div class="relative">
-            <!-- Main Image -->
-            <div 
-                class="relative overflow-hidden rounded-lg border border-white/10 cursor-pointer group"
-                on:click={() => openGalleryModal(modernImages, modernIndex, 'Современные фото')}
-                on:keydown={(e) => e.key === 'Enter' && openGalleryModal(modernImages, modernIndex, 'Современные фото')}
-                role="button"
-                tabindex="0"
-            >
-                <img
-                    src={modernImages[modernIndex]}
-                    alt="Современное фото {modernIndex + 1}"
-                    class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                    <span class="text-xs text-amber-400">Современное фото • {modernIndex + 1}/{modernImages.length}</span>
+                <div class="flex gap-2 overflow-x-auto pb-2">
+                    {#each historicImages as img, i}
+                        <button
+                            class="flex-shrink-0 w-16 h-12 rounded-md overflow-hidden border-2 transition-all
+                                {i === historicIndex ? 'border-amber-500' : 'border-transparent hover:border-white/30'}"
+                            on:click={() => historicIndex = i}
+                        >
+                            <img src={img} alt="Фото {i + 1}" class="w-full h-full object-cover" />
+                        </button>
+                    {/each}
                 </div>
-                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div class="bg-white/20 backdrop-blur-sm rounded-full p-3">
-                        <Maximize2 size={24} class="text-white" />
+            {/if}
+        {/if}
+        
+        {#if legacyTab === 'modern' && hasModern}
+            <div class="relative">
+                <div 
+                    class="relative overflow-hidden rounded-lg border border-white/10 cursor-pointer group"
+                    on:click={() => openGalleryModal(modernImages, modernIndex, 'Современные фото')}
+                    on:keydown={(e) => e.key === 'Enter' && openGalleryModal(modernImages, modernIndex, 'Современные фото')}
+                    role="button"
+                    tabindex="0"
+                >
+                    <img
+                        src={modernImages[modernIndex]}
+                        alt="Современное фото {modernIndex + 1}"
+                        class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                        <span class="text-xs text-amber-400">Современное фото • {modernIndex + 1}/{modernImages.length}</span>
+                    </div>
+                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <div class="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                            <Maximize2 size={24} class="text-white" />
+                        </div>
                     </div>
                 </div>
+                
+                {#if modernImages.length > 1}
+                    <button 
+                        class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1.5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        on:click|stopPropagation={() => modernIndex = Math.max(0, modernIndex - 1)}
+                        disabled={modernIndex === 0}
+                    >
+                        <ChevronLeft size={20} class="text-white" />
+                    </button>
+                    <button 
+                        class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1.5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        on:click|stopPropagation={() => modernIndex = Math.min(modernImages.length - 1, modernIndex + 1)}
+                        disabled={modernIndex === modernImages.length - 1}
+                    >
+                        <ChevronRight size={20} class="text-white" />
+                    </button>
+                {/if}
             </div>
             
-            <!-- Navigation arrows -->
             {#if modernImages.length > 1}
-                <button 
-                    class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1.5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    on:click|stopPropagation={() => modernIndex = Math.max(0, modernIndex - 1)}
-                    disabled={modernIndex === 0}
-                >
-                    <ChevronLeft size={20} class="text-white" />
-                </button>
-                <button 
-                    class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1.5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    on:click|stopPropagation={() => modernIndex = Math.min(modernImages.length - 1, modernIndex + 1)}
-                    disabled={modernIndex === modernImages.length - 1}
-                >
-                    <ChevronRight size={20} class="text-white" />
-                </button>
+                <div class="flex gap-2 overflow-x-auto pb-2">
+                    {#each modernImages as img, i}
+                        <button
+                            class="flex-shrink-0 w-16 h-12 rounded-md overflow-hidden border-2 transition-all
+                                {i === modernIndex ? 'border-amber-500' : 'border-transparent hover:border-white/30'}"
+                            on:click={() => modernIndex = i}
+                        >
+                            <img src={img} alt="Фото {i + 1}" class="w-full h-full object-cover" />
+                        </button>
+                    {/each}
+                </div>
             {/if}
-        </div>
+        {/if}
         
-        <!-- Thumbnails -->
-        {#if modernImages.length > 1}
-            <div class="flex gap-2 overflow-x-auto pb-2">
-                {#each modernImages as img, i}
-                    <button
-                        class="flex-shrink-0 w-16 h-12 rounded-md overflow-hidden border-2 transition-all
-                            {i === modernIndex ? 'border-amber-500' : 'border-transparent hover:border-white/30'}"
-                        on:click={() => modernIndex = i}
-                    >
-                        <img src={img} alt="Фото {i + 1}" class="w-full h-full object-cover" />
-                    </button>
-                {/each}
+        {#if legacyTab === 'panorama' && hasPanorama}
+            <div class="space-y-3">
+                {#if hasHistoricPanorama}
+                    <PanoramaViewer url={poi.historic_panorama_url} title="Историческая панорама (360°)" />
+                {/if}
+                {#if hasModernPanorama}
+                    <PanoramaViewer url={poi.modern_panorama_url} title="Современная панорама (360°)" />
+                {/if}
             </div>
         {/if}
-    {/if}
-    
-    {#if activeTab === 'panorama' && hasPanorama}
-        <div class="space-y-3">
-            {#if hasHistoricPanorama}
-                <PanoramaViewer 
-                    url={poi.historic_panorama_url} 
-                    title="Историческая панорама (360°)" 
-                />
-            {/if}
-            
-            {#if hasModernPanorama}
-                <PanoramaViewer 
-                    url={poi.modern_panorama_url} 
-                    title="Современная панорама (360°)" 
-                />
-            {/if}
-        </div>
     {/if}
 </div>
 

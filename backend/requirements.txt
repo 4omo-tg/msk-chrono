@@ -16,4 +16,4 @@ pytest
 httpx
 pytest-asyncio
 jinja2
-python-telegram-bot>=20.0
+aiogram>=3.0

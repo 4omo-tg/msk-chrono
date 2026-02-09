@@ -25,6 +25,8 @@ class UserUpdate(UserBase):
     display_name: Optional[str] = None
     profile_visibility: Optional[str] = None
     show_on_leaderboard: Optional[bool] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 # Profile customization update
@@ -113,6 +115,9 @@ class User(UserInDBBase):
     total_time_minutes: int = 0
     streak_days: int = 0
     reputation: int = 0
+    chrono_crystals: int = 5
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     profile_visibility: str = "public"
     show_on_leaderboard: bool = True
     created_at: Optional[datetime] = None

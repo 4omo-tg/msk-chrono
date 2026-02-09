@@ -210,6 +210,50 @@ async def upload_avatar(
     return {"avatar_url": current_user.avatar_url}
 
 
+@router.get("/search", response_model=list[schemas.UserSearchResult])
+async def search_users(
+    q: str = Query(..., min_length=2),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
+    limit: int = 20,
+) -> Any:
+    """Поиск пользователей"""
+    result = await db.execute(
+        select(models.User)
+        .options(selectinload(models.User.equipped_title), selectinload(models.User.equipped_frame))
+        .where(
+            or_(
+                models.User.username.ilike(f"%{q}%"),
+                models.User.display_name.ilike(f"%{q}%")
+            ),
+            models.User.id != current_user.id,
+            models.User.profile_visibility != "private"
+        )
+        .limit(limit)
+    )
+    users = result.scalars().all()
+    
+    # Get friend IDs
+    friends_result = await db.execute(
+        select(models.Friendship.friend_id).where(models.Friendship.user_id == current_user.id)
+    )
+    friend_ids = set(friends_result.scalars().all())
+    
+    return [
+        schemas.UserSearchResult(
+            id=u.id,
+            username=u.username,
+            display_name=u.display_name,
+            avatar_url=u.avatar_url,
+            level=u.level,
+            equipped_title=schemas.TitleOut.model_validate(u.equipped_title) if u.equipped_title else None,
+            equipped_frame=schemas.FrameOut.model_validate(u.equipped_frame) if u.equipped_frame else None,
+            is_friend=u.id in friend_ids,
+        )
+        for u in users
+    ]
+
+
 @router.get("/{user_id}", response_model=schemas.PublicProfile)
 async def get_user_profile(
     user_id: int,
@@ -314,46 +358,3 @@ async def get_user_profile(
         friend_request_received=friend_request_received,
     )
 
-
-@router.get("/search", response_model=list[schemas.UserSearchResult])
-async def search_users(
-    q: str = Query(..., min_length=2),
-    db: AsyncSession = Depends(deps.get_db),
-    current_user: models.User = Depends(deps.get_current_active_user),
-    limit: int = 20,
-) -> Any:
-    """Поиск пользователей"""
-    result = await db.execute(
-        select(models.User)
-        .options(selectinload(models.User.equipped_title), selectinload(models.User.equipped_frame))
-        .where(
-            or_(
-                models.User.username.ilike(f"%{q}%"),
-                models.User.display_name.ilike(f"%{q}%")
-            ),
-            models.User.id != current_user.id,
-            models.User.profile_visibility != "private"
-        )
-        .limit(limit)
-    )
-    users = result.scalars().all()
-    
-    # Get friend IDs
-    friends_result = await db.execute(
-        select(models.Friendship.friend_id).where(models.Friendship.user_id == current_user.id)
-    )
-    friend_ids = set(friends_result.scalars().all())
-    
-    return [
-        schemas.UserSearchResult(
-            id=u.id,
-            username=u.username,
-            display_name=u.display_name,
-            avatar_url=u.avatar_url,
-            level=u.level,
-            equipped_title=schemas.TitleOut.model_validate(u.equipped_title) if u.equipped_title else None,
-            equipped_frame=schemas.FrameOut.model_validate(u.equipped_frame) if u.equipped_frame else None,
-            is_friend=u.id in friend_ids,
-        )
-        for u in users
-    ]

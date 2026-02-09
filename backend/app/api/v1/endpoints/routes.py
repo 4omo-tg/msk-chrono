@@ -14,10 +14,15 @@ router = APIRouter()
 
 def poi_to_schema(p: models.PointOfInterest) -> schemas.PointOfInterest:
     """Convert POI model to schema with all fields."""
+    photos = []
+    if hasattr(p, 'photos') and p.photos:
+        photos = [schemas.POIPhoto.model_validate(ph) for ph in p.photos]
     return schemas.PointOfInterest(
         id=p.id,
         title=p.title,
         description=p.description,
+        address=p.address,
+        full_article=p.full_article,
         historic_image_url=p.historic_image_url,
         modern_image_url=p.modern_image_url,
         historic_images=p.historic_images or [],
@@ -25,7 +30,8 @@ def poi_to_schema(p: models.PointOfInterest) -> schemas.PointOfInterest:
         historic_panorama_url=p.historic_panorama_url,
         modern_panorama_url=p.modern_panorama_url,
         latitude=p.latitude,
-        longitude=p.longitude
+        longitude=p.longitude,
+        photos=photos,
     )
 
 @router.get("/", response_model=List[schemas.Route])
@@ -40,7 +46,10 @@ async def read_routes(
     # Eager load points
     result = await db.execute(
         select(models.Route)
-        .options(selectinload(models.Route.points))
+        .options(
+            selectinload(models.Route.points)
+            .selectinload(models.PointOfInterest.photos)
+        )
         .offset(skip)
         .limit(limit)
     )
@@ -123,7 +132,10 @@ async def read_route(
     """
     result = await db.execute(
         select(models.Route)
-        .options(selectinload(models.Route.points))
+        .options(
+            selectinload(models.Route.points)
+            .selectinload(models.PointOfInterest.photos)
+        )
         .where(models.Route.id == route_id)
     )
     route = result.scalars().first()

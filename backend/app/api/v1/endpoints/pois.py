@@ -1,30 +1,14 @@
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app import models, schemas
 from app.api import deps
 
 router = APIRouter()
-
-
-def poi_to_schema(poi: models.PointOfInterest) -> schemas.PointOfInterest:
-    """Convert POI model to schema with all fields."""
-    return schemas.PointOfInterest(
-        id=poi.id,
-        title=poi.title,
-        description=poi.description,
-        historic_image_url=poi.historic_image_url,
-        modern_image_url=poi.modern_image_url,
-        historic_images=poi.historic_images or [],
-        modern_images=poi.modern_images or [],
-        historic_panorama_url=poi.historic_panorama_url,
-        modern_panorama_url=poi.modern_panorama_url,
-        latitude=poi.latitude,
-        longitude=poi.longitude
-    )
 
 
 @router.get("/", response_model=List[schemas.PointOfInterest])
@@ -34,24 +18,29 @@ async def read_pois(
     limit: int = 100,
     latitude: Optional[float] = None,
     longitude: Optional[float] = None,
-    radius: Optional[float] = 500,
 ) -> Any:
-    """
-    Retrieve POIs. Filter by nearby if lat/lon/radius provided.
-    """
-    query = select(models.PointOfInterest)
-    
+    query = select(models.PointOfInterest).options(selectinload(models.PointOfInterest.photos))
     if latitude is not None and longitude is not None:
-         delta = 0.01 
-         query = query.where(
-             models.PointOfInterest.latitude.between(latitude - delta, latitude + delta),
-             models.PointOfInterest.longitude.between(longitude - delta, longitude + delta)
-         )
-    
+        delta = 0.01
+        query = query.where(
+            models.PointOfInterest.latitude.between(latitude - delta, latitude + delta),
+            models.PointOfInterest.longitude.between(longitude - delta, longitude + delta),
+        )
     result = await db.execute(query.offset(skip).limit(limit))
-    pois = result.scalars().all()
-    
-    return [poi_to_schema(poi) for poi in pois]
+    return result.scalars().all()
+
+
+@router.get("/{poi_id}", response_model=schemas.PointOfInterest)
+async def read_poi(*, db: AsyncSession = Depends(deps.get_db), poi_id: int) -> Any:
+    result = await db.execute(
+        select(models.PointOfInterest)
+        .options(selectinload(models.PointOfInterest.photos))
+        .where(models.PointOfInterest.id == poi_id)
+    )
+    poi = result.scalars().first()
+    if not poi:
+        raise HTTPException(status_code=404, detail="POI not found")
+    return poi
 
 
 @router.post("/", response_model=schemas.PointOfInterest)
@@ -61,42 +50,14 @@ async def create_poi(
     poi_in: schemas.PointOfInterestCreate,
     current_user: models.User = Depends(deps.get_current_active_superuser),
 ) -> Any:
-    """
-    Create new POI. Only superusers.
-    """
-    poi = models.PointOfInterest(
-        title=poi_in.title,
-        description=poi_in.description,
-        historic_image_url=poi_in.historic_image_url,
-        modern_image_url=poi_in.modern_image_url,
-        historic_images=poi_in.historic_images or [],
-        modern_images=poi_in.modern_images or [],
-        historic_panorama_url=poi_in.historic_panorama_url,
-        modern_panorama_url=poi_in.modern_panorama_url,
-        latitude=poi_in.latitude,
-        longitude=poi_in.longitude
-    )
+    data = poi_in.model_dump(exclude={"photos"})
+    poi = models.PointOfInterest(**data)
     db.add(poi)
+    await db.flush()
+    for p in (poi_in.photos or []):
+        db.add(models.POIPhoto(poi_id=poi.id, **p.model_dump()))
     await db.commit()
-    await db.refresh(poi)
-    
-    return poi_to_schema(poi)
-
-
-@router.get("/{poi_id}", response_model=schemas.PointOfInterest)
-async def read_poi(
-    *,
-    db: AsyncSession = Depends(deps.get_db),
-    poi_id: int,
-) -> Any:
-    """
-    Get POI by ID.
-    """
-    poi = await db.get(models.PointOfInterest, poi_id)
-    if not poi:
-        raise HTTPException(status_code=404, detail="POI not found")
-        
-    return poi_to_schema(poi)
+    return await read_poi(db=db, poi_id=poi.id)
 
 
 @router.put("/{poi_id}", response_model=schemas.PointOfInterest)
@@ -107,41 +68,120 @@ async def update_poi(
     poi_in: schemas.PointOfInterestUpdate,
     current_user: models.User = Depends(deps.get_current_active_superuser),
 ) -> Any:
-    """
-    Update POI. Only superusers.
-    """
-    poi = await db.get(models.PointOfInterest, poi_id)
+    result = await db.execute(
+        select(models.PointOfInterest)
+        .options(selectinload(models.PointOfInterest.photos))
+        .where(models.PointOfInterest.id == poi_id)
+    )
+    poi = result.scalars().first()
     if not poi:
         raise HTTPException(status_code=404, detail="POI not found")
-        
-    update_data = poi_in.model_dump(exclude_unset=True)
-    
+    update_data = poi_in.model_dump(exclude_unset=True, exclude={"photos"})
     for field, value in update_data.items():
         setattr(poi, field, value)
-
-    db.add(poi)
+    if poi_in.photos is not None:
+        # Перезапись всех фото
+        for old in poi.photos:
+            await db.delete(old)
+        await db.flush()
+        for p in poi_in.photos:
+            db.add(models.POIPhoto(poi_id=poi.id, **p.model_dump()))
     await db.commit()
-    await db.refresh(poi)
-    
-    return poi_to_schema(poi)
+    return await read_poi(db=db, poi_id=poi.id)
 
 
-@router.delete("/{poi_id}", response_model=schemas.PointOfInterest)
+@router.delete("/{poi_id}")
 async def delete_poi(
     *,
     db: AsyncSession = Depends(deps.get_db),
     poi_id: int,
     current_user: models.User = Depends(deps.get_current_active_superuser),
 ) -> Any:
-    """
-    Delete POI. Only superusers.
-    """
     poi = await db.get(models.PointOfInterest, poi_id)
     if not poi:
         raise HTTPException(status_code=404, detail="POI not found")
-        
-    poi_schema = poi_to_schema(poi)
-    
     await db.delete(poi)
     await db.commit()
-    return poi_schema
+    return {"ok": True}
+
+
+# --- Article ---
+
+@router.get("/{poi_id}/article")
+async def get_article(poi_id: int, db: AsyncSession = Depends(deps.get_db)) -> Any:
+    """Get the full article for a POI."""
+    result = await db.execute(
+        select(models.PointOfInterest).where(models.PointOfInterest.id == poi_id)
+    )
+    poi = result.scalars().first()
+    if not poi:
+        raise HTTPException(status_code=404, detail="POI not found")
+    return {
+        "poi_id": poi.id,
+        "title": poi.title,
+        "address": poi.address,
+        "description": poi.description,
+        "full_article": poi.full_article,
+    }
+
+
+# --- Photo sub-resource ---
+
+@router.get("/{poi_id}/photos", response_model=List[schemas.POIPhoto])
+async def list_photos(
+    poi_id: int,
+    year: Optional[int] = None,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """Get photos for a POI, optionally filtered by year."""
+    q = select(models.POIPhoto).where(models.POIPhoto.poi_id == poi_id)
+    if year is not None:
+        q = q.where(models.POIPhoto.year == year)
+    q = q.order_by(models.POIPhoto.year)
+    result = await db.execute(q)
+    return result.scalars().all()
+
+
+@router.get("/{poi_id}/years")
+async def list_years(poi_id: int, db: AsyncSession = Depends(deps.get_db)) -> Any:
+    """Get available years for a POI."""
+    from sqlalchemy import distinct, func as f
+    result = await db.execute(
+        select(models.POIPhoto.year, f.count(models.POIPhoto.id))
+        .where(models.POIPhoto.poi_id == poi_id)
+        .group_by(models.POIPhoto.year)
+        .order_by(models.POIPhoto.year)
+    )
+    return [{"year": row[0], "count": row[1]} for row in result.all()]
+
+
+@router.post("/{poi_id}/photos", response_model=schemas.POIPhoto)
+async def add_photo(
+    poi_id: int,
+    photo_in: schemas.POIPhotoCreate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_superuser),
+) -> Any:
+    poi = await db.get(models.PointOfInterest, poi_id)
+    if not poi:
+        raise HTTPException(status_code=404, detail="POI not found")
+    photo = models.POIPhoto(poi_id=poi_id, **photo_in.model_dump())
+    db.add(photo)
+    await db.commit()
+    await db.refresh(photo)
+    return photo
+
+
+@router.delete("/{poi_id}/photos/{photo_id}")
+async def delete_photo(
+    poi_id: int,
+    photo_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_superuser),
+) -> Any:
+    photo = await db.get(models.POIPhoto, photo_id)
+    if not photo or photo.poi_id != poi_id:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    await db.delete(photo)
+    await db.commit()
+    return {"ok": True}

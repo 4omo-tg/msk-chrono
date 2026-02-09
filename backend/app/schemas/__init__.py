@@ -4,7 +4,7 @@ from .user import (
     ProfileUpdate, UserProfile, PublicProfile, UserSearchResult,
     TitleOut, FrameOut, BadgeOut
 )
-from .poi import PointOfInterest, PointOfInterestCreate, PointOfInterestUpdate
+from .poi import PointOfInterest, PointOfInterestCreate, PointOfInterestUpdate, POIPhoto, POIPhotoCreate
 from .route import Route, RouteCreate, RouteUpdate
 from .progress import UserProgress, UserProgressCreate, UserProgressUpdate, CheckIn, CheckInResponse
 from .quiz import Quiz, QuizCreate, QuizUpdate, QuizPublic, QuizSubmit, QuizSubmitResponse, UserQuizProgress
@@ -12,6 +12,8 @@ from .verification import VerificationResponse
 from .achievement import Achievement, AchievementCreate, UserAchievement, AchievementWithStatus, NewAchievementsResponse
 from .friendship import FriendRequestCreate, FriendRequestOut, FriendOut, FriendshipUpdate
 from .cosmetics import TitleOut as CosmeticTitleOut, FrameOut as CosmeticFrameOut, BadgeOut as CosmeticBadgeOut, EquipTitle, EquipFrame, EquipBadges
+
+from .time_photo import TimePhotoCreate, TimePhotoOut, TimePhotoHistory, CrystalBalance
 
 from .learning import (
     LearningModuleOut, ModuleWithProgressOut,

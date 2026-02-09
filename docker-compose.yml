@@ -41,6 +41,8 @@ services:
       AI_API_BASE_URL: ${AI_API_BASE_URL:-https://ai-proxxy.exe.xyz/api}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-qwen3-vl-plus}
+      # GeminiGen.AI (Time Machine)
+      GEMINIGEN_API_KEY: ${GEMINIGEN_API_KEY:-}
       # Site URL
       SITE_URL: ${SITE_URL:-http://localhost:8000}
     ports:

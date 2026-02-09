@@ -20,6 +20,10 @@
         X,
         ChevronDown,
         ChevronUp,
+        MapPin,
+        Navigation,
+        BookOpen,
+        Sparkles,
     } from "lucide-svelte";
 
     let selectedPOI: any = null;
@@ -350,6 +354,13 @@
                 <span>Помощь</span>
             </button>
             <a
+                href="#/time-machine"
+                class="flex items-center gap-2 hover:text-violet-400 text-sm font-medium transition-colors"
+            >
+                <Sparkles size={18} />
+                <span>Машина Времени</span>
+            </a>
+            <a
                 href="#/profile"
                 class="flex items-center gap-2 hover:text-amber-400 text-sm font-medium transition-colors"
             >
@@ -398,6 +409,14 @@
                     <span>Помощь</span>
                 </button>
                 <a
+                    href="#/time-machine"
+                    class="flex items-center gap-3 p-3 hover:bg-white/5 rounded-lg transition-colors"
+                    on:click={() => mobileMenuOpen = false}
+                >
+                    <Sparkles size={20} class="text-violet-400" />
+                    <span>Машина Времени</span>
+                </a>
+                <a
                     href="#/profile"
                     class="flex items-center gap-3 p-3 hover:bg-white/5 rounded-lg transition-colors"
                     on:click={() => mobileMenuOpen = false}
@@ -424,16 +443,28 @@
         >
             {#if selectedPOI}
                     <div
-                        class="mb-4 flex items-center justify-between border-b border-white/10 pb-4"
+                        class="mb-4 border-b border-white/10 pb-4"
                     >
-                        <h2 class="text-xl font-bold text-amber-500">
-                            {selectedPOI.title}
-                        </h2>
-                        <button
-                            on:click={() => (selectedPOI = null)}
-                            class="text-gray-500 hover:text-white text-sm"
-                            >Закрыть</button
-                        >
+                        <div class="flex items-center justify-between mb-2">
+                            <h2 class="text-xl font-bold text-amber-500">
+                                {selectedPOI.title}
+                            </h2>
+                            <button
+                                on:click={() => (selectedPOI = null)}
+                                class="text-gray-500 hover:text-white text-sm"
+                                >Закрыть</button
+                            >
+                        </div>
+                        {#if selectedPOI.address}
+                            <div class="flex items-center gap-1.5 text-gray-400 mb-1">
+                                <MapPin size={13} class="text-amber-500/60 flex-shrink-0" />
+                                <span class="text-xs">{selectedPOI.address}</span>
+                            </div>
+                        {/if}
+                        <div class="flex items-center gap-1.5 text-gray-500">
+                            <Navigation size={12} class="flex-shrink-0" />
+                            <span class="text-[11px] font-mono">{selectedPOI.latitude.toFixed(6)}, {selectedPOI.longitude.toFixed(6)}</span>
+                        </div>
                     </div>
 
                     <div class="pb-20">
@@ -482,6 +513,15 @@
                                 >
                                     {selectedPOI.description}
                                 </p>
+                                {#if selectedPOI.full_article}
+                                    <a
+                                        href="#/article/{selectedPOI.id}"
+                                        class="mt-3 flex items-center gap-2 text-amber-400 hover:text-amber-300 text-sm font-medium transition-colors"
+                                    >
+                                        <BookOpen size={14} />
+                                        <span>Читать полную статью</span>
+                                    </a>
+                                {/if}
                             </div>
 
                             {#if currentQuizzes.length > 0}
@@ -645,16 +685,28 @@
                     <div class="px-4 pb-6">
                         {#if selectedPOI}
                             <!-- POI Details -->
-                            <div class="mb-4 flex items-center justify-between border-b border-white/10 pb-4">
-                                <h2 class="text-lg font-bold text-amber-500 flex-1 pr-4">
-                                    {selectedPOI.title}
-                                </h2>
-                                <button
-                                    on:click={() => { selectedPOI = null; mobileSidebarOpen = false; }}
-                                    class="text-gray-500 hover:text-white p-2"
-                                >
-                                    <X size={20} />
-                                </button>
+                            <div class="mb-4 border-b border-white/10 pb-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h2 class="text-lg font-bold text-amber-500 flex-1 pr-4">
+                                        {selectedPOI.title}
+                                    </h2>
+                                    <button
+                                        on:click={() => { selectedPOI = null; mobileSidebarOpen = false; }}
+                                        class="text-gray-500 hover:text-white p-2"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                                {#if selectedPOI.address}
+                                    <div class="flex items-center gap-1.5 text-gray-400 mb-1">
+                                        <MapPin size={13} class="text-amber-500/60 flex-shrink-0" />
+                                        <span class="text-xs">{selectedPOI.address}</span>
+                                    </div>
+                                {/if}
+                                <div class="flex items-center gap-1.5 text-gray-500">
+                                    <Navigation size={12} class="flex-shrink-0" />
+                                    <span class="text-[11px] font-mono">{selectedPOI.latitude.toFixed(6)}, {selectedPOI.longitude.toFixed(6)}</span>
+                                </div>
                             </div>
 
                             <div class="space-y-4">
@@ -690,6 +742,15 @@
                                     <p class="text-sm text-gray-300 leading-relaxed italic">
                                         {selectedPOI.description}
                                     </p>
+                                    {#if selectedPOI.full_article}
+                                        <a
+                                            href="#/article/{selectedPOI.id}"
+                                            class="mt-3 flex items-center gap-2 text-amber-400 hover:text-amber-300 text-sm font-medium transition-colors"
+                                        >
+                                            <BookOpen size={14} />
+                                            <span>Читать полную статью</span>
+                                        </a>
+                                    {/if}
                                 </div>
 
                                 <!-- Quiz Button -->
