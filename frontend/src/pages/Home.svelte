@@ -30,29 +30,7 @@
         }
     ];
 
-    const routes = [
-        {
-            title: "Бульварное Кольцо",
-            duration: "2.5 часа",
-            distance: "9 км",
-            points: 15,
-            image: "https://images.unsplash.com/photo-1513326738677-b964603b136d?w=400&h=300&fit=crop"
-        },
-        {
-            title: "Замоскворечье",
-            duration: "1.5 часа",
-            distance: "5 км",
-            points: 10,
-            image: "https://images.unsplash.com/photo-1520106212299-d99c443e4568?w=400&h=300&fit=crop"
-        },
-        {
-            title: "Китай-город",
-            duration: "2 часа",
-            distance: "4 км",
-            points: 12,
-            image: "https://images.unsplash.com/photo-1547448415-e9f5b28e570d?w=400&h=300&fit=crop"
-        }
-    ];
+
 </script>
 
 <div class="min-h-screen bg-neutral-900 text-white font-sans selection:bg-amber-500 selection:text-black">
@@ -139,61 +117,6 @@
                             <p class="text-gray-400 text-sm">{feature.description}</p>
                         </div>
                     {/each}
-                </div>
-            </div>
-        </section>
-
-        <!-- Popular Routes Section -->
-        <section class="py-20">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center mb-12">
-                    <div>
-                        <h2 class="text-3xl md:text-4xl font-bold mb-2">Популярные Маршруты</h2>
-                        <p class="text-gray-400">Начните с наших самых любимых маршрутов</p>
-                    </div>
-                    <a href="#/routes" class="hidden sm:flex items-center gap-2 text-amber-400 hover:text-amber-300 transition-colors">
-                        Все маршруты
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-                        </svg>
-                    </a>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {#each routes as route}
-                        <div class="group bg-neutral-800 rounded-2xl overflow-hidden border border-white/5 hover:border-amber-500/30 transition-all">
-                            <div class="relative h-48 overflow-hidden">
-                                <img src={route.image} alt={route.title} class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                                <div class="absolute inset-0 bg-gradient-to-t from-neutral-900 to-transparent"></div>
-                                <div class="absolute bottom-4 left-4">
-                                    <span class="bg-amber-500 text-black text-xs font-bold px-2 py-1 rounded-full">{route.points} точек</span>
-                                </div>
-                            </div>
-                            <div class="p-5">
-                                <h3 class="text-xl font-semibold mb-2 group-hover:text-amber-400 transition-colors">{route.title}</h3>
-                                <div class="flex items-center gap-4 text-gray-400 text-sm">
-                                    <span class="flex items-center gap-1">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        {route.duration}
-                                    </span>
-                                    <span class="flex items-center gap-1">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                        </svg>
-                                        {route.distance}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    {/each}
-                </div>
-
-                <div class="mt-8 text-center sm:hidden">
-                    <a href="#/routes" class="text-amber-400 hover:text-amber-300 transition-colors">
-                        Смотреть все маршруты →
-                    </a>
                 </div>
             </div>
         </section>
