@@ -697,34 +697,109 @@ tailwind.config={darkMode:'class',theme:{extend:{colors:{brand:{50:'#fffbeb',100
     <div x-show="page==='settings'">
       <h1 class="text-2xl font-bold mb-6">Настройки</h1>
       <p class="text-slate-400 text-sm mb-6">АПИ-токены и ключи внешних сервисов. Изменения применяются мгновенно без перезапуска.</p>
-      <div class="space-y-4">
-        <template x-for="s in siteSettings" :key="s.key">
-          <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
-            <div class="flex items-center justify-between mb-2">
-              <div>
-                <div class="font-semibold text-sm" x-text="settingLabel(s.key)"></div>
-                <code class="text-xs text-slate-500" x-text="s.key"></code>
-              </div>
-              <span x-show="s.has_value" class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-xs">Задано</span>
-              <span x-show="!s.has_value" class="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs">Не задано</span>
+      
+      <div class="space-y-6">
+        <!-- Машина Времени -->
+        <div class="bg-gradient-to-br from-violet-900/30 to-purple-900/20 border border-violet-500/30 rounded-xl p-5">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 bg-violet-500/20 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             </div>
-            <div class="text-xs text-slate-400 mb-3 font-mono truncate" x-text="s.value || '—'"></div>
-            <div class="flex gap-2">
-              <input
-                :type="isSecret(s.key)?'password':'text'"
-                class="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                :placeholder="'Новое значение для ' + settingLabel(s.key)"
-                x-model="settingsEditing[s.key]"
-              >
-              <button
-                @click="if(settingsEditing[s.key]) saveSetting(s.key, settingsEditing[s.key])"
-                :disabled="!settingsEditing[s.key]"
-                class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-black text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >Сохранить</button>
+            <div>
+              <h3 class="font-bold text-white">Машина Времени</h3>
+              <p class="text-xs text-slate-400">Настройки генерации фото</p>
             </div>
           </div>
-        </template>
+          <div class="space-y-4">
+            <template x-for="s in siteSettings.filter(x => ['TIME_MACHINE_PROVIDER','TIME_MACHINE_MODE','GEMINIGEN_API_KEY','KIE_API_KEY'].includes(x.key))" :key="s.key">
+              <div class="bg-slate-900/50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <div class="font-medium text-sm text-white" x-text="settingLabel(s.key)"></div>
+                    <div class="text-xs text-slate-500" x-text="settingDesc(s.key)"></div>
+                  </div>
+                  <span x-show="s.has_value" class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-xs">✓</span>
+                </div>
+                <div class="flex gap-2 mt-3">
+                  <template x-if="isSelectSetting(s.key)">
+                    <select x-model="settingsEditing[s.key]" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                      <option value="">— Выберите —</option>
+                      <template x-for="opt in getSelectOptions(s.key)" :key="opt.value">
+                        <option :value="opt.value" x-text="opt.label" :selected="s.value===opt.value"></option>
+                      </template>
+                    </select>
+                  </template>
+                  <template x-if="!isSelectSetting(s.key)">
+                    <input :type="isSecret(s.key)?'password':'text'" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" :placeholder="s.has_value?'••••••••':'Введите значение'" x-model="settingsEditing[s.key]">
+                  </template>
+                  <button @click="saveSetting(s.key, settingsEditing[s.key])" :disabled="!settingsEditing[s.key]" class="px-4 py-2 rounded-lg bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed">Сохранить</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Telegram Bot -->
+        <div class="bg-gradient-to-br from-blue-900/30 to-cyan-900/20 border border-blue-500/30 rounded-xl p-5">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            </div>
+            <div>
+              <h3 class="font-bold text-white">Telegram Bot</h3>
+              <p class="text-xs text-slate-400">Настройки бота</p>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <template x-for="s in siteSettings.filter(x => ['TELEGRAM_BOT_TOKEN','TELEGRAM_BOT_USERNAME'].includes(x.key))" :key="s.key">
+              <div class="bg-slate-900/50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <div class="font-medium text-sm text-white" x-text="settingLabel(s.key)"></div>
+                    <div class="text-xs text-slate-500" x-text="settingDesc(s.key)"></div>
+                  </div>
+                  <span x-show="s.has_value" class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-xs">✓</span>
+                </div>
+                <div class="flex gap-2 mt-3">
+                  <input :type="isSecret(s.key)?'password':'text'" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" :placeholder="s.has_value?'••••••••':'Введите значение'" x-model="settingsEditing[s.key]">
+                  <button @click="saveSetting(s.key, settingsEditing[s.key])" :disabled="!settingsEditing[s.key]" class="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed">Сохранить</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- AI / LLM -->
+        <div class="bg-gradient-to-br from-emerald-900/30 to-teal-900/20 border border-emerald-500/30 rounded-xl p-5">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            </div>
+            <div>
+              <h3 class="font-bold text-white">AI / LLM</h3>
+              <p class="text-xs text-slate-400">Настройки языковой модели</p>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <template x-for="s in siteSettings.filter(x => ['AI_API_KEY','AI_API_BASE_URL','AI_MODEL'].includes(x.key))" :key="s.key">
+              <div class="bg-slate-900/50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <div class="font-medium text-sm text-white" x-text="settingLabel(s.key)"></div>
+                    <div class="text-xs text-slate-500" x-text="settingDesc(s.key)"></div>
+                  </div>
+                  <span x-show="s.has_value" class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-xs">✓</span>
+                </div>
+                <div class="flex gap-2 mt-3">
+                  <input :type="isSecret(s.key)?'password':'text'" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" :placeholder="s.has_value?'••••••••':'Введите значение'" x-model="settingsEditing[s.key]">
+                  <button @click="saveSetting(s.key, settingsEditing[s.key])" :disabled="!settingsEditing[s.key]" class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed">Сохранить</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
       </div>
+
       <div x-show="siteSettings.length===0" class="bg-slate-800 border border-slate-700 rounded-xl p-12 text-center text-slate-500">Загрузка...</div>
     </div>
 
@@ -970,28 +1045,64 @@ function app() {
 
     // Settings
     async loadSettings() {
-      try { this.siteSettings = await this.api('GET', '/api/v1/settings/'); this.settingsEditing = {}; } catch(e) { this.toast(e.message, 'error'); }
+      try { this.siteSettings = await this.api('GET', '/api/v1/settings'); this.settingsEditing = {}; } catch(e) { this.toast(e.message, 'error'); }
     },
     async saveSetting(key, value) {
       try {
-        await this.api('PUT', '/api/v1/settings/', { key, value });
+        await this.api('PUT', '/api/v1/settings', { key, value });
         this.toast('Настройка сохранена');
         this.loadSettings();
       } catch(e) { this.toast(e.message, 'error'); }
     },
     settingLabel(key) {
       const labels = {
-        'TELEGRAM_BOT_TOKEN': 'Telegram Bot Token',
-        'TELEGRAM_BOT_USERNAME': 'Telegram Bot Username',
-        'GEMINIGEN_API_KEY': 'GeminiGen API Key (генерация фото)',
-        'AI_API_KEY': 'AI API Key',
-        'AI_API_BASE_URL': 'AI API Base URL',
-        'AI_MODEL': 'AI Model',
+        'TELEGRAM_BOT_TOKEN': 'Bot Token',
+        'TELEGRAM_BOT_USERNAME': 'Bot Username',
+        'GEMINIGEN_API_KEY': 'GeminiGen API Key',
+        'KIE_API_KEY': 'KIE API Key',
+        'TIME_MACHINE_PROVIDER': 'Провайдер',
+        'TIME_MACHINE_MODE': 'Режим по умолчанию',
+        'AI_API_KEY': 'API Key',
+        'AI_API_BASE_URL': 'Base URL',
+        'AI_MODEL': 'Модель',
       };
       return labels[key] || key;
     },
+    settingDesc(key) {
+      const descs = {
+        'TELEGRAM_BOT_TOKEN': 'Токен от @BotFather',
+        'TELEGRAM_BOT_USERNAME': 'Имя бота без @',
+        'GEMINIGEN_API_KEY': 'Ключ API для GeminiGen.AI',
+        'KIE_API_KEY': 'Ключ API для KIE AI (nano-banana-pro)',
+        'TIME_MACHINE_PROVIDER': 'Сервис для генерации изображений',
+        'TIME_MACHINE_MODE': 'Режим трансформации по умолчанию',
+        'AI_API_KEY': 'Ключ для LLM (OpenAI / совместимый)',
+        'AI_API_BASE_URL': 'URL API (пусто для OpenAI)',
+        'AI_MODEL': 'gpt-4, gpt-3.5-turbo и т.д.',
+      };
+      return descs[key] || '';
+    },
     isSecret(key) {
       return key.includes('TOKEN') || key.includes('KEY');
+    },
+    isSelectSetting(key) {
+      return ['TIME_MACHINE_PROVIDER', 'TIME_MACHINE_MODE'].includes(key);
+    },
+    getSelectOptions(key) {
+      if (key === 'TIME_MACHINE_PROVIDER') {
+        return [
+          { value: 'geminigen', label: 'GeminiGen.AI' },
+          { value: 'kie', label: 'KIE AI (nano-banana-pro)' }
+        ];
+      }
+      if (key === 'TIME_MACHINE_MODE') {
+        return [
+          { value: 'clothing_only', label: 'Только одежда' },
+          { value: 'full', label: 'Полная трансформация' },
+          { value: 'full_vintage', label: 'Полная + винтаж' }
+        ];
+      }
+      return [];
     },
 
     // File upload
