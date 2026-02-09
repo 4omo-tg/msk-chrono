@@ -13,7 +13,7 @@ from app.api import deps
 router = APIRouter()
 
 
-@router.get("/", response_model=list[schemas.FriendOut])
+@router.get("", response_model=list[schemas.FriendOut])
 async def get_friends(
     db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),

@@ -11,7 +11,7 @@ from app.core import security
 router = APIRouter()
 
 
-@router.get("/", response_model=list[schemas.User])
+@router.get("", response_model=list[schemas.User])
 async def read_users(
     db: AsyncSession = Depends(deps.get_db),
     skip: int = 0,

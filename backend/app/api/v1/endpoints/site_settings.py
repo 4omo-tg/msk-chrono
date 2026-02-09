@@ -24,7 +24,7 @@ class SettingUpdate(BaseModel):
     value: str
 
 
-@router.get("/", response_model=list[SettingsOut])
+@router.get("", response_model=list[SettingsOut])
 async def read_settings(
     db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_superuser),
@@ -43,7 +43,7 @@ async def read_settings(
     return out
 
 
-@router.put("/")
+@router.put("")
 async def update_setting(
     payload: SettingUpdate,
     db: AsyncSession = Depends(deps.get_db),

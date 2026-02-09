@@ -34,7 +34,7 @@ def poi_to_schema(p: models.PointOfInterest) -> schemas.PointOfInterest:
         photos=photos,
     )
 
-@router.get("/", response_model=List[schemas.Route])
+@router.get("", response_model=List[schemas.Route])
 async def read_routes(
     db: AsyncSession = Depends(deps.get_db),
     skip: int = 0,
@@ -73,7 +73,7 @@ async def read_routes(
         )
     return route_schemas
 
-@router.post("/", response_model=schemas.Route)
+@router.post("", response_model=schemas.Route)
 async def create_route(
     *,
     db: AsyncSession = Depends(deps.get_db),

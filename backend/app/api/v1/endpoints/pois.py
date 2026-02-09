@@ -11,7 +11,7 @@ from app.api import deps
 router = APIRouter()
 
 
-@router.get("/", response_model=List[schemas.PointOfInterest])
+@router.get("", response_model=List[schemas.PointOfInterest])
 async def read_pois(
     db: AsyncSession = Depends(deps.get_db),
     skip: int = 0,
@@ -43,7 +43,7 @@ async def read_poi(*, db: AsyncSession = Depends(deps.get_db), poi_id: int) -> A
     return poi
 
 
-@router.post("/", response_model=schemas.PointOfInterest)
+@router.post("", response_model=schemas.PointOfInterest)
 async def create_poi(
     *,
     db: AsyncSession = Depends(deps.get_db),

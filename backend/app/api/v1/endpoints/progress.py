@@ -10,7 +10,7 @@ from app.api.v1.endpoints.achievements import check_and_award_achievements
 
 router = APIRouter()
 
-@router.get("/", response_model=List[schemas.UserProgress])
+@router.get("", response_model=List[schemas.UserProgress])
 async def read_user_progress(
     db: AsyncSession = Depends(deps.get_db),
     skip: int = 0,
@@ -48,7 +48,7 @@ async def get_current_progress(
         raise HTTPException(status_code=404, detail="No active route")
     return progress
 
-@router.post("/", response_model=schemas.UserProgress)
+@router.post("", response_model=schemas.UserProgress)
 async def create_progress(
     *,
     db: AsyncSession = Depends(deps.get_db),

@@ -9,7 +9,7 @@ import math
 
 router = APIRouter()
 
-@router.get("/", response_model=List[schemas.Quiz])
+@router.get("", response_model=List[schemas.Quiz])
 async def list_quizzes(
     db: AsyncSession = Depends(deps.get_db),
     skip: int = 0,
@@ -60,7 +60,7 @@ async def get_quiz(
         raise HTTPException(status_code=404, detail="Quiz not found")
     return quiz
 
-@router.post("/", response_model=schemas.Quiz)
+@router.post("", response_model=schemas.Quiz)
 async def create_quiz(
     *,
     db: AsyncSession = Depends(deps.get_db),

@@ -15,6 +15,18 @@ app = FastAPI(
     redirect_slashes=True,
 )
 
+
+@app.middleware("http")
+async def normalize_api_path(request: Request, call_next):
+    """Normalize API paths by stripping trailing slashes.
+    This prevents FastAPI from issuing 307 redirects that lose
+    Authorization headers in the browser."""
+    path = request.scope["path"]
+    if path.startswith("/api/") and len(path) > 5 and path.endswith("/"):
+        request.scope["path"] = path.rstrip("/")
+    return await call_next(request)
+
+
 # Set all CORS enabled origins
 app.add_middleware(
     CORSMiddleware,

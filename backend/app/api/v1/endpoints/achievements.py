@@ -80,7 +80,7 @@ async def check_and_award_achievements(
     return new_achievements
 
 
-@router.get("/", response_model=List[schemas.AchievementWithStatus])
+@router.get("", response_model=List[schemas.AchievementWithStatus])
 async def get_achievements(
     db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
