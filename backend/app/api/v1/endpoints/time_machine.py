@@ -13,13 +13,15 @@ Modes:
 import os
 import uuid
 import base64
+import hmac
+import hashlib
 from datetime import datetime
 from math import ceil
 from pathlib import Path
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy import select, func as sa_func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,81 +53,178 @@ KIE_FILE_UPLOAD_URL = "https://kieai.redpandaai.co/api/file-base64-upload"
 # Prompt Templates
 # ──────────────────────────────────────────────────────────────────────
 
-def _get_era_style_description(year: int) -> tuple[str, str]:
-    """Return (vintage_style_prompt, style_label) for the target year."""
+def _get_full_era_prompt(year: int) -> tuple[str, str]:
+    """
+    Return (full_prompt, style_label) for the target year.
+    These are comprehensive prompts for full_vintage mode with Russian/Moscow context.
+    """
+    if year < 1850:
+        return (
+            f"Transform this photo to look like it was captured in {year}. "
+            "Moderately adapt the environment to early 19th-century Imperial Russia: "
+            "replace modern elements with dirt/cobblestone roads, horse-drawn carriages "
+            "and sedan chairs, wooden merchant stalls with Cyrillic signage, wrought-iron "
+            "lanterns, and period-appropriate details like wooden fences and hand-painted "
+            "shop signs. Preserve architectural silhouette but enhance with Empire-style "
+            "details: classical cornices, columns, and wooden window shutters. Replace "
+            "clothing with authentic 1800s fashion: men in tailcoats with high collars, "
+            "waistcoats, breeches, tricorne or bicorne hats, and leather boots; women in "
+            "high-waisted Empire silhouette dresses, fichu shawls, bonnets with ribbons, "
+            "and delicate gloves. Apply early 19th-century artistic style: soft sepia-toned "
+            "palette mimicking hand-tinted engravings, subtle paper texture, gentle brushstroke "
+            "effect, faded edges, and characteristic tonal range of aquatint prints from the era.",
+            "Гравюра начала XIX века"
+        )
     if year < 1900:
         return (
-            "Apply authentic 19th century daguerreotype photography style: "
-            "true black and white with high contrast, visible grain and texture, "
-            "soft vignette around edges, slightly faded corners, period-appropriate "
-            "lighting with dramatic shadows.",
-            "Daguerreotype / vintage B&W"
+            f"Transform this photo to look like it was taken in {year}. "
+            "Moderately adapt the environment to mid-19th century Imperial Russia: "
+            "replace modern elements with cobblestone streets, horse-drawn carriages, "
+            "gas lanterns, wooden merchant stalls, and period-appropriate shop signs "
+            "with Cyrillic lettering; preserve architectural silhouette but add historical "
+            "details like wrought-iron balconies and wooden shutters. Replace clothing "
+            "with authentic 1850s fashion: men in tailcoats with standing collars, top hats, "
+            "and leather boots; women in crinoline skirts, corseted bodices, bonnets, and "
+            "lace shawls. Apply daguerreotype/early photographic style: sepia-toned palette, "
+            "subtle silver nitrate grain, soft focus, vignette edges, and characteristic "
+            "tonal range of 1850s wet-plate collodion process.",
+            "Дагеротип XIX века"
         )
     if year < 1940:
         return (
-            "Apply early 20th century photography style: sepia-toned or slightly "
-            "desaturated colors, visible film grain, soft focus edges, warm brownish "
-            "tones characteristic of early color or hand-tinted photographs.",
-            "Sepia / early 20th-century"
+            f"Transform this photo to look like it was taken in {year}. "
+            "Moderately adapt the environment to turn-of-the-century Imperial Russia: "
+            "replace modern elements with cobblestone streets, horse-drawn carriages and "
+            "early automobiles, gas lanterns, wooden merchant stalls with Cyrillic signage, "
+            "wrought-iron street lamps, and period shop windows with vintage advertisements. "
+            "Preserve architectural silhouette but enhance with historical details like "
+            "decorative cornices and wooden window frames. Replace clothing with authentic "
+            "1900s fashion: men in three-piece suits, waistcoats, bowler hats or fedoras, "
+            "leather boots; women in long tailored dresses with high collars, leg-of-mutton "
+            "sleeves, wide-brimmed hats with ribbons, and lace gloves. Apply early 20th-century "
+            "photographic style: soft sepia or toned black-and-white palette, fine film grain, "
+            "gentle vignette, moderate contrast, and characteristic tonal range of 1900s "
+            "dry-plate gelatin photography.",
+            "Фото начала XX века"
         )
     if year < 1970:
         return (
-            "Apply 1950s photography style: muted desaturated colors, subtle film grain, "
-            "soft contrast, slight vignette, and warm tonal range characteristic of "
-            "mid-century Kodachrome or Ektachrome film stock.",
-            "Mid-century muted film"
+            f"Transform this photo to look like it was taken in {year}. "
+            "Moderately adapt the environment to post-war Soviet Moscow: replace modern "
+            "elements with cobblestone/asphalt streets, trolleybuses and GAZ-M20 Pobeda cars, "
+            "wooden benches, vintage 'Soyuzpechat' kiosks, Cyrillic shop signs with period "
+            "typography, and subtle propaganda posters on walls. Preserve architectural "
+            "silhouette but enhance with 1950s details like wrought-iron railings and wooden "
+            "window frames. Replace clothing with authentic late-Stalin era fashion: men in "
+            "wool suits, peaked caps or fedoras, buttoned jackets; women in A-line dresses "
+            "with modest prints, headscarves tied under the chin, and low-heeled shoes. "
+            "Apply 1950s Soviet photographic style: desaturated black-and-white or cool-toned "
+            "sepia palette, fine film grain, soft contrast, gentle vignette, and characteristic "
+            "tonal range of domestic Svema film stock.",
+            "Советское фото 1950-х"
         )
     if year < 2000:
         return (
-            "Apply retro film photography style with warm tones, visible film grain, "
-            "slightly faded colors, light leaks, and color palette typical of "
-            "1970s-1990s consumer film photography.",
-            "Retro warm film"
+            f"Transform this photo to look like it was taken in {year}. "
+            "Moderately adapt the environment to late Soviet/early post-Soviet Moscow: "
+            "add period details like Lada and Moskvitch cars, metal kiosks, hand-painted "
+            "Cyrillic signage, and Soviet-era bus stops. Preserve architectural silhouette "
+            "but add details like TV antennas on roofs. Replace clothing with authentic "
+            "1980s fashion: men in synthetic jackets, wide-collar shirts; women in bright "
+            "printed dresses, permed hair. Apply retro film photography style with warm tones, "
+            "visible film grain, slightly faded colors, and color palette typical of 1980s "
+            "Soviet Tasma film stock.",
+            "Советское фото 1980-х"
         )
+    if year < 2010:
+        return (
+            f"Transform this photo to look like it was taken in {year}. "
+            "Moderately adapt the environment to turn-of-the-millennium Moscow: replace "
+            "modern elements with early 2000s details — Lada Samara and VAZ-2109 cars, "
+            "neon-lit kiosks with 'GSM' signs, early mobile phone advertisements, plastic "
+            "café chairs on sidewalks, and Cyrillic signage with Y2K-era typography. Preserve "
+            "architectural silhouette but add period details like satellite dishes on balconies "
+            "and early LED displays. Replace clothing with authentic late 1990s/early 2000s "
+            "fashion: men in oversized denim jackets, cargo pants, logo t-shirts, and baseball "
+            "caps; women in low-rise jeans, crop tops, velour tracksuits, platform shoes, and "
+            "butterfly clips in hair. Apply early digital photography style: slightly "
+            "oversaturated colors, subtle JPEG compression artifacts, soft focus, mild "
+            "chromatic aberration, and characteristic color cast of early 2000s compact "
+            "digital cameras.",
+            "Цифровое фото 2000-х"
+        )
+    if year > 2050:
+        return (
+            f"Transform this photo to look like it was captured in {year}. "
+            "Moderately adapt the environment to near-future Moscow: integrate subtle "
+            "cyberpunk elements — holographic Cyrillic signage floating above streets, "
+            "sleek autonomous electric vehicles gliding on smart roads, augmented reality "
+            "wayfinding projections on building facades, vertical greenery on historic "
+            "structures, and minimalist transit pods. Preserve architectural silhouette "
+            "of Moscow landmarks but enhance with sustainable tech: solar-glass cladding, "
+            "kinetic energy pavement, and discreet drone ports. Replace clothing with "
+            "futuristic fashion: adaptive smart fabrics with subtle luminescent threads, "
+            "minimalist silhouettes with magnetic closures, AR glasses integrated into "
+            "lightweight frames, and biometric wearables. Apply futuristic visual aesthetic: "
+            "crisp neo-noir palette with electric cyan/magenta accents against desaturated "
+            "urban tones, clean volumetric lighting, subtle lens flare from holograms, "
+            "fine digital grain, and characteristic render quality of next-gen light-field "
+            "photography.",
+            "Киберпанк будущего"
+        )
+    # Default modern
     return (
-        "Modern digital photography style with natural colors.",
-        "Modern digital"
+        f"Transform this photo to look like it was taken in {year}. "
+        "Keep modern environment and clothing. Apply contemporary digital photography style "
+        "with natural colors and sharp details.",
+        "Современное фото"
     )
 
 
 def _get_clothing_prompt(year: int) -> str:
-    """Return clothing/fashion description for the target year."""
+    """Return clothing/fashion description for the target year (Russian context)."""
     if year < 1850:
         return (
-            "Update clothing to early 19th century fashion: men in tailcoats, waistcoats, "
-            "cravats, and top hats; women in empire-waist dresses with high necklines, "
-            "bonnets, and shawls."
+            "Update clothing to early 19th century Imperial Russian fashion: men in tailcoats "
+            "with high collars, waistcoats, breeches, tricorne or bicorne hats, and leather boots; "
+            "women in high-waisted Empire silhouette dresses, fichu shawls, bonnets with ribbons, "
+            "and delicate gloves."
         )
     if year < 1900:
         return (
-            "Update clothing to Victorian era fashion: men in frock coats, bowler hats, "
-            "and pocket watches; women in bustle dresses, corsets, high collars, "
-            "and elaborate hats."
+            "Update clothing to mid-19th century Imperial Russian fashion: men in tailcoats "
+            "with standing collars, top hats, and leather boots; women in crinoline skirts, "
+            "corseted bodices, bonnets, and lace shawls."
         )
-    if year < 1930:
+    if year < 1940:
         return (
-            "Update clothing to early 20th century fashion: men in three-piece suits "
-            "with wide lapels, bowler or fedora hats, pocket watches; women in "
-            "long skirts or early flapper dresses, cloche hats."
+            "Update clothing to early 20th century Russian fashion: men in three-piece suits, "
+            "waistcoats, bowler hats or fedoras, leather boots; women in long tailored dresses "
+            "with high collars, leg-of-mutton sleeves, wide-brimmed hats with ribbons, and lace gloves."
         )
-    if year < 1960:
+    if year < 1970:
         return (
-            "Update clothing to authentic mid-century fashion: men in tailored suits "
-            "with wide lapels and fedora hats; women in full-skirted dresses with "
-            "nipped waists, pearl accessories, and period-appropriate hairstyles "
-            "like victory rolls or pin curls."
-        )
-    if year < 1980:
-        return (
-            "Update clothing to 1960s-70s fashion: men in slim suits or casual "
-            "turtlenecks, sideburns; women in mini skirts, shift dresses, or "
-            "bell-bottoms with peace-era accessories."
+            "Update clothing to Soviet 1950s fashion: men in wool suits, peaked caps or fedoras, "
+            "buttoned jackets; women in A-line dresses with modest prints, headscarves tied "
+            "under the chin, and low-heeled shoes."
         )
     if year < 2000:
         return (
-            "Update clothing to 1980s-90s fashion: men in power suits with shoulder pads "
-            "or casual denim; women in bold colors, big hair, shoulder pads, "
-            "or grunge-era flannel and jeans."
+            "Update clothing to late Soviet 1980s fashion: men in synthetic jackets, "
+            "wide-collar shirts, flat caps; women in bright printed dresses, permed hair, "
+            "and practical low-heeled shoes."
+        )
+    if year < 2010:
+        return (
+            "Update clothing to early 2000s post-Soviet fashion: men in oversized denim jackets, "
+            "cargo pants, logo t-shirts, and baseball caps; women in low-rise jeans, crop tops, "
+            "velour tracksuits, platform shoes, and butterfly clips in hair."
+        )
+    if year > 2050:
+        return (
+            "Update clothing to futuristic fashion: adaptive smart fabrics with subtle luminescent "
+            "threads, minimalist silhouettes with magnetic closures, AR glasses integrated into "
+            "lightweight frames, and biometric wearables."
         )
     return "Keep clothing modern and contemporary."
 
@@ -138,38 +237,33 @@ def _build_prompt(year: int, mode: str) -> tuple[str, str]:
     
     Modes:
     - clothing_only: Only change clothing, keep environment intact
-    - full: Change clothing + architecture/environment
-    - full_vintage: Full changes + vintage photo style
+    - full: Change clothing + architecture/environment (modern photo quality)
+    - full_vintage: Full changes + vintage photo style (comprehensive prompt)
     """
     clothing = _get_clothing_prompt(year)
-    era_style, style_label = _get_era_style_description(year)
     
     if mode == "clothing_only":
         prompt = (
             f"Transform this photo to look like it was taken in {year}. "
-            f"Keep original buildings and environment intact with minimal alterations. "
+            f"Keep original buildings and environment completely intact with no alterations. "
             f"{clothing} "
             f"Maintain modern photo quality and colors - only update the people's attire."
         )
-        return prompt, f"Clothing only → {year}"
+        return prompt, f"Только одежда → {year}"
     
     elif mode == "full":
         prompt = (
             f"Transform this photo to look like it was taken in {year}. "
             f"{clothing} "
-            f"Update architecture and surroundings to match the {year}s era: "
-            f"period-appropriate vehicles, signage, street furniture, and urban landscape. "
-            f"Keep modern photo quality and natural colors."
+            f"Moderately update environment to match {year}s era: period-appropriate vehicles, "
+            f"signage with Cyrillic lettering, street furniture, and urban landscape details. "
+            f"Preserve architectural silhouette but add historical details. "
+            f"Keep modern photo quality with natural colors and sharp details."
         )
-        return prompt, f"Full transformation → {year}"
+        return prompt, f"Полная трансформация → {year}"
     
-    else:  # full_vintage
-        prompt = (
-            f"Transform this photo to look like it was taken in {year}. "
-            f"Keep original buildings and environment intact with minimal alterations. "
-            f"{clothing} "
-            f"{era_style}"
-        )
+    else:  # full_vintage - use comprehensive era-specific prompt
+        prompt, style_label = _get_full_era_prompt(year)
         return prompt, style_label
 
 
@@ -278,8 +372,12 @@ async def _upload_to_kie(file_path: str, db: AsyncSession) -> str:
     resp.raise_for_status()
     data = resp.json()
     
-    if data.get("success") and data.get("data", {}).get("fileUrl"):
-        return data["data"]["fileUrl"]
+    # API returns downloadUrl, not fileUrl
+    if data.get("success") or data.get("code") == 200:
+        file_data = data.get("data", {})
+        url = file_data.get("downloadUrl") or file_data.get("fileUrl")
+        if url:
+            return url
     
     raise ValueError(f"KIE file upload failed: {data}")
 
@@ -298,8 +396,13 @@ async def _call_kie(
         "Content-Type": "application/json"
     }
     
+    # Build callback URL - KIE will POST results here
+    # Note: In production, this should be your public URL
+    callback_url = "https://cache-rain.exe.xyz:8000/api/v1/time-machine/kie-callback"
+    
     payload = {
         "model": "nano-banana-pro",
+        "callBackUrl": callback_url,
         "input": {
             "prompt": prompt,
             "image_input": [image_url],
@@ -330,46 +433,33 @@ async def _call_kie(
 
 
 async def _poll_kie(task_id: str, db: AsyncSession) -> dict:
-    """Check the status of a KIE generation task."""
-    api_key = await get_setting(db, "KIE_API_KEY")
+    """
+    Check the status of a KIE generation task.
     
-    headers = {
-        "Authorization": f"Bearer {api_key}"
-    }
+    KIE API uses webhooks for results - there's no polling endpoint.
+    The webhook callback updates the TimePhoto record directly.
+    This function just checks if the record was updated by the webhook.
+    """
+    # Check if the photo was already updated by webhook
+    result = await db.execute(
+        select(TimePhoto).where(TimePhoto.geminigen_uuid == task_id)
+    )
+    photo = result.scalars().first()
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(
-            f"{KIE_API_BASE}/api/v1/jobs/getTask",
-            headers=headers,
-            params={"taskId": task_id}
-        )
-    
-    resp.raise_for_status()
-    data = resp.json()
-    
-    # KIE returns code 200 with task details
-    if data.get("code") == 200:
-        task_data = data.get("data", {})
-        status = task_data.get("status", "processing")
-        
-        # Map KIE status to our status
-        # KIE uses: "pending", "processing", "success", "failed"
-        if status == "success":
+    if photo:
+        if photo.status == "completed" and photo.result_image_url:
             return {
                 "status": 2,  # completed
-                "generate_result": task_data.get("output", {}).get("image_url") or 
-                                   task_data.get("output", {}).get("url") or
-                                   (task_data.get("output", {}).get("images", [None])[0])
+                "generate_result": photo.result_image_url
             }
-        elif status == "failed":
+        elif photo.status == "failed":
             return {
                 "status": 3,  # failed
-                "error_message": task_data.get("error") or "Generation failed"
+                "error_message": photo.error_message or "Generation failed"
             }
-        else:
-            return {"status": 1}  # processing
     
-    return {"status": 1}  # assume still processing
+    # Still waiting for webhook callback
+    return {"status": 1}  # processing
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -453,7 +543,7 @@ async def get_config(
 
 @router.post("/generate", response_model=TimePhotoOut, status_code=status.HTTP_201_CREATED)
 async def generate_time_photo(
-    target_year: int = Form(..., ge=1800, le=2030),
+    target_year: int = Form(..., ge=1800, le=2100),
     apply_era_style: bool = Form(True),  # Kept for backward compatibility
     mode: Optional[str] = Form(None),  # New: explicit mode selection
     file: UploadFile = File(...),
@@ -665,3 +755,128 @@ async def check_generation(
     await db.commit()
     await db.refresh(photo)
     return photo
+
+
+# ──────────────────────────────────────────────────────────────────────
+# KIE Webhook Callback
+# ──────────────────────────────────────────────────────────────────────
+
+@router.post("/kie-callback", include_in_schema=False)
+async def kie_webhook_callback(
+    request: Request,
+    db: AsyncSession = Depends(deps.get_db),
+):
+    """
+    Webhook endpoint for KIE AI to send generation results.
+    KIE will POST here when generation is complete.
+    Verifies HMAC signature for security.
+    """
+    # Get raw body for signature verification
+    raw_body = await request.body()
+    
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+    
+    # Extract task info
+    task_id = body.get("taskId") or body.get("data", {}).get("task_id")
+    
+    # Verify HMAC signature if present
+    timestamp = request.headers.get("X-Webhook-Timestamp")
+    received_signature = request.headers.get("X-Webhook-Signature")
+    
+    if timestamp and received_signature:
+        # Get HMAC key from settings
+        hmac_key = await get_setting(db, "KIE_WEBHOOK_HMAC_KEY")
+        if hmac_key:
+            # Generate expected signature: base64(HMAC-SHA256(taskId + "." + timestamp, key))
+            data_to_sign = f"{task_id}.{timestamp}"
+            expected_signature = base64.b64encode(
+                hmac.new(
+                    hmac_key.encode(),
+                    data_to_sign.encode(),
+                    hashlib.sha256
+                ).digest()
+            ).decode()
+            
+            # Constant-time comparison to prevent timing attacks
+            if not hmac.compare_digest(expected_signature, received_signature):
+                raise HTTPException(status_code=401, detail="Invalid signature")
+    code = body.get("code", 0)
+    data = body.get("data", {})
+    
+    if not task_id:
+        raise HTTPException(status_code=400, detail="Missing taskId")
+    
+    # Find the photo by geminigen_uuid (which stores KIE task_id)
+    result = await db.execute(
+        select(TimePhoto).where(TimePhoto.geminigen_uuid == task_id)
+    )
+    photo = result.scalars().first()
+    
+    if not photo:
+        # Task not found - might be from another system
+        return {"status": "ignored", "reason": "task not found"}
+    
+    # Already processed
+    if photo.status in ("completed", "failed"):
+        return {"status": "already_processed"}
+    
+    # Process result
+    if code == 200:
+        # Success - extract result URL
+        output = data.get("output", {})
+        result_url = None
+        
+        if isinstance(output, dict):
+            result_url = (
+                output.get("image_url") or
+                output.get("url") or
+                output.get("image") or
+                (output.get("images", [None])[0] if output.get("images") else None)
+            )
+        elif isinstance(output, list) and len(output) > 0:
+            first = output[0]
+            result_url = first if isinstance(first, str) else first.get("url") if isinstance(first, dict) else None
+        elif isinstance(output, str):
+            result_url = output
+        
+        # Also check top-level data fields
+        if not result_url:
+            result_url = (
+                data.get("result") or
+                data.get("image_url") or
+                data.get("url") or
+                data.get("output_url")
+            )
+        
+        if result_url:
+            photo.result_image_url = result_url
+            photo.status = "completed"
+            photo.completed_at = datetime.utcnow()
+        else:
+            photo.status = "failed"
+            photo.error_message = "No result URL in callback"
+            # Refund crystal
+            user_result = await db.execute(
+                select(models.User).where(models.User.id == photo.user_id)
+            )
+            user = user_result.scalars().first()
+            if user:
+                user.chrono_crystals += 1
+    else:
+        # Failed
+        photo.status = "failed"
+        photo.error_message = data.get("error") or data.get("message") or body.get("msg") or "Generation failed"
+        # Refund crystal
+        user_result = await db.execute(
+            select(models.User).where(models.User.id == photo.user_id)
+        )
+        user = user_result.scalars().first()
+        if user:
+            user.chrono_crystals += 1
+    
+    await db.commit()
+    
+    return {"status": "processed", "task_id": task_id}

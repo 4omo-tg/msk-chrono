@@ -30,33 +30,39 @@
 
     // Era descriptions
     const eraDescriptions: Record<string, { label: string; desc: string; color: string }> = {
-        "1800": { label: "XIX век", desc: "Дагеротип, чёрно-белое фото", color: "text-stone-400" },
-        "1900": { label: "Начало XX века", desc: "Сепия, зернистость, винтаж", color: "text-amber-700" },
-        "1950": { label: "Середина XX века", desc: "Приглушённые цвета, плёнка", color: "text-teal-500" },
-        "1970": { label: "70-е — 90-е", desc: "Тёплые тона, ретро-плёнка", color: "text-orange-400" },
-        "2000": { label: "Современность", desc: "Цифровая фотография", color: "text-blue-400" },
+        "1800": { label: "Начало XIX века", desc: "Гравюра, акватинта, сепия", color: "text-amber-800" },
+        "1850": { label: "Середина XIX века", desc: "Дагеротип, серебряное зерно", color: "text-stone-400" },
+        "1900": { label: "Начало XX века", desc: "Сепия, сухие пластины", color: "text-amber-600" },
+        "1950": { label: "СССР 1950-х", desc: "Ч/б, плёнка Свема", color: "text-teal-500" },
+        "1985": { label: "Поздний СССР", desc: "Цветная плёнка Тасма", color: "text-orange-400" },
+        "2000": { label: "2000-е", desc: "Ранняя цифра, JPEG", color: "text-blue-400" },
+        "2024": { label: "Современность", desc: "Цифровая фотография", color: "text-indigo-400" },
+        "2077": { label: "Будущее", desc: "Киберпанк, неон, голограммы", color: "text-cyan-400" },
     };
 
     function getEraInfo(year: number) {
-        if (year < 1900) return eraDescriptions["1800"];
+        if (year < 1850) return eraDescriptions["1800"];
+        if (year < 1900) return eraDescriptions["1850"];
         if (year < 1950) return eraDescriptions["1900"];
-        if (year < 1970) return eraDescriptions["1950"];
-        if (year < 2000) return eraDescriptions["1970"];
-        return eraDescriptions["2000"];
+        if (year < 1980) return eraDescriptions["1950"];
+        if (year < 2005) return eraDescriptions["1985"];
+        if (year < 2025) return eraDescriptions["2000"];
+        if (year > 2050) return eraDescriptions["2077"];
+        return eraDescriptions["2024"];
     }
 
     $: currentEra = getEraInfo(targetYear);
 
     // Year presets
     const yearPresets = [
+        { year: 1800, label: "1800" },
         { year: 1850, label: "1850" },
         { year: 1900, label: "1900" },
-        { year: 1930, label: "1930" },
         { year: 1950, label: "1950" },
-        { year: 1970, label: "1970" },
         { year: 1985, label: "1985" },
         { year: 2000, label: "2000" },
         { year: 2024, label: "2024" },
+        { year: 2077, label: "2077" },
     ];
 
     // Mode icons
@@ -326,7 +332,7 @@
                     type="range"
                     bind:value={targetYear}
                     min="1800"
-                    max="2030"
+                    max="2100"
                     step="1"
                     class="w-full h-2 bg-neutral-700 rounded-full appearance-none cursor-pointer
                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5

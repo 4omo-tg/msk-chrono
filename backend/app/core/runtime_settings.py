@@ -23,6 +23,7 @@ EDITABLE_KEYS: dict[str, str] = {
     "TELEGRAM_BOT_USERNAME": "TELEGRAM_BOT_USERNAME",
     "GEMINIGEN_API_KEY": "GEMINIGEN_API_KEY",
     "KIE_API_KEY": "KIE_API_KEY",
+    "KIE_WEBHOOK_HMAC_KEY": "KIE_WEBHOOK_HMAC_KEY",
     "TIME_MACHINE_PROVIDER": "TIME_MACHINE_PROVIDER",  # "geminigen" or "kie"
     "TIME_MACHINE_MODE": "TIME_MACHINE_MODE",  # "clothing_only", "full", "full_vintage"
     "AI_API_KEY": "AI_API_KEY",
