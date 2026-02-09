@@ -1,16 +1,17 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
-# ── Create request ──────────────────────────────────────────────────────────
+# ── Create request ────────────────────────────────────────────────────────────────
 
 class TimePhotoCreate(BaseModel):
     target_year: int = Field(..., ge=1800, le=2030, description="Target historical year")
-    apply_era_style: bool = Field(True, description="Apply era-appropriate visual style")
+    apply_era_style: bool = Field(True, description="Apply era-appropriate visual style (legacy)")
+    mode: Optional[str] = Field(None, description="Transformation mode: clothing_only, full, full_vintage")
 
 
-# ── Single photo response ───────────────────────────────────────────────────
+# ── Single photo response ─────────────────────────────────────────────────────────
 
 class TimePhotoOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -24,6 +25,8 @@ class TimePhotoOut(BaseModel):
     style_applied: Optional[str] = None
     prompt_used: Optional[str] = None
     geminigen_uuid: Optional[str] = None
+    provider: Optional[str] = "geminigen"
+    transformation_mode: Optional[str] = "full_vintage"
     status: str
     error_message: Optional[str] = None
     cost: int
@@ -31,7 +34,7 @@ class TimePhotoOut(BaseModel):
     completed_at: Optional[datetime] = None
 
 
-# ── Paginated history ───────────────────────────────────────────────────────
+# ── Paginated history ───────────────────────────────────────────────────────────
 
 class TimePhotoHistory(BaseModel):
     items: List[TimePhotoOut]
@@ -41,7 +44,7 @@ class TimePhotoHistory(BaseModel):
     pages: int
 
 
-# ── Crystal balance ─────────────────────────────────────────────────────────
+# ── Crystal balance ─────────────────────────────────────────────────────────────
 
 class CrystalBalance(BaseModel):
     chrono_crystals: int
@@ -52,3 +55,17 @@ class CrystalBalance(BaseModel):
         "Получайте достижения — до +3 кристаллов",
         "Приглашайте друзей — +2 кристалла за каждого",
     ]
+
+
+# ── Time Machine configuration ─────────────────────────────────────────────────
+
+class TransformationMode(BaseModel):
+    id: str
+    name: str
+    desc: str
+
+
+class TimeMachineConfig(BaseModel):
+    provider: str = "geminigen"  # Current provider: "geminigen" or "kie"
+    mode: str = "full_vintage"   # Current default mode
+    modes: List[Dict[str, str]]  # Available modes with descriptions

@@ -12,6 +12,8 @@
   import TelegramCallback from "./pages/TelegramCallback.svelte";
   import TimeMachine from "./pages/TimeMachine.svelte";
   import Article from "./pages/Article.svelte";
+  import Admin from "./pages/Admin.svelte";
+  import AdminSettings from "./pages/AdminSettings.svelte";
   import InstallPrompt from "./components/InstallPrompt.svelte";
 
   const routes = {
@@ -26,6 +28,8 @@
     "/user/:id": UserProfile,
     "/time-machine": TimeMachine,
     "/article/:id": Article,
+    "/admin": Admin,
+    "/admin/settings": AdminSettings,
     "/telegram-callback": TelegramCallback,
   };
 </script>

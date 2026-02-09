@@ -14,7 +14,9 @@ class TimePhoto(Base):
     apply_era_style = Column(Boolean, server_default="true", nullable=False)
     style_applied = Column(String, nullable=True)
     prompt_used = Column(String, nullable=True)
-    geminigen_uuid = Column(String, nullable=True)
+    geminigen_uuid = Column(String, nullable=True)  # Also stores KIE task_id
+    provider = Column(String, server_default="geminigen", nullable=False)  # "geminigen" or "kie"
+    transformation_mode = Column(String, server_default="full_vintage", nullable=False)  # "clothing_only", "full", "full_vintage"
     status = Column(String, server_default="pending", nullable=False)
     error_message = Column(String, nullable=True)
     cost = Column(Integer, server_default="1", nullable=False)

@@ -6,13 +6,18 @@
     import {
         Clock, Upload, Sparkles, ArrowLeft, Image, Loader2,
         CheckCircle, XCircle, RefreshCw, Gem, ToggleLeft, ToggleRight,
-        History, ChevronDown, X, Download, Eye
+        History, ChevronDown, X, Download, Eye, Settings, Shirt, Building2, Camera
     } from "lucide-svelte";
 
     // State
     let crystals = 0;
     let targetYear = 1950;
-    let applyEraStyle = true;
+    let selectedMode = "full_vintage";
+    let modes: {id: string, name: string, desc: string}[] = [
+        {id: "clothing_only", name: "Только одежда", desc: "Изменить только одежду людей"},
+        {id: "full", name: "Полная трансформация", desc: "Одежда + архитектура"},
+        {id: "full_vintage", name: "Полная + винтаж", desc: "+ стиль фото эпохи"}
+    ];
     let selectedFile: File | null = null;
     let previewUrl: string | null = null;
     let generating = false;
@@ -54,12 +59,23 @@
         { year: 2024, label: "2024" },
     ];
 
+    // Mode icons
+    function getModeIcon(modeId: string) {
+        switch (modeId) {
+            case "clothing_only": return Shirt;
+            case "full": return Building2;
+            case "full_vintage": return Camera;
+            default: return Sparkles;
+        }
+    }
+
     onMount(async () => {
         if (!isAuthenticated()) {
             push("/register");
             return;
         }
         await loadBalance();
+        await loadConfig();
         await loadHistory();
     });
 
@@ -76,6 +92,23 @@
             }
         } catch (e) {
             console.error("Failed to load balance", e);
+        }
+    }
+
+    async function loadConfig() {
+        try {
+            const res = await apiGet("/api/v1/time-machine/config");
+            if (res.ok) {
+                const data = await res.json();
+                if (data.modes && data.modes.length > 0) {
+                    modes = data.modes;
+                }
+                if (data.mode) {
+                    selectedMode = data.mode;
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load config", e);
         }
     }
 
@@ -119,7 +152,8 @@
             const formData = new FormData();
             formData.append("file", selectedFile);
             formData.append("target_year", targetYear.toString());
-            formData.append("apply_era_style", applyEraStyle.toString());
+            formData.append("mode", selectedMode);
+            formData.append("apply_era_style", (selectedMode === "full_vintage").toString());
 
             const res = await apiPostFormData("/api/v1/time-machine/generate", formData);
             if (!res.ok) {
@@ -192,6 +226,11 @@
         }
     }
 
+    function getModeLabel(modeId: string): string {
+        const m = modes.find(x => x.id === modeId);
+        return m ? m.name : modeId;
+    }
+
     function resolveImageUrl(url: string | null): string {
         if (!url) return "";
         if (url.startsWith("http")) return url;
@@ -241,8 +280,7 @@
                 <div>
                     <h2 class="font-semibold text-white">Путешествие во времени для ваших фото</h2>
                     <p class="text-sm text-gray-400 mt-1">
-                        Загрузите фотографию и выберите год — ИИ перенесёт её в нужную эпоху. 
-                        Фото станет чёрно-белым для 1800-х, сепия для 1900-х, или в стиле ретро-плёнки для 70-х!
+                        Загрузите фотографию, выберите год и режим трансформации — ИИ перенесёт её в нужную эпоху!
                     </p>
                 </div>
             </div>
@@ -320,7 +358,7 @@
             </div>
 
             <!-- Era style preview -->
-            {#if applyEraStyle}
+            {#if selectedMode === "full_vintage"}
                 <div class="bg-neutral-900/50 rounded-lg p-3 border border-white/5">
                     <p class="text-xs text-gray-500">Стиль эпохи:</p>
                     <p class="text-sm {currentEra.color} font-medium">{currentEra.desc}</p>
@@ -328,29 +366,37 @@
             {/if}
         </div>
 
-        <!-- Era style toggle -->
-        <div class="bg-neutral-800 rounded-xl border border-white/10 p-4">
-            <h3 class="text-sm font-medium text-gray-300 uppercase tracking-wide mb-3">3. Стиль обработки</h3>
+        <!-- Mode selector -->
+        <div class="bg-neutral-800 rounded-xl border border-white/10 p-4 space-y-4">
+            <h3 class="text-sm font-medium text-gray-300 uppercase tracking-wide">3. Режим трансформации</h3>
             
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-white font-medium">Стиль эпохи</p>
-                    <p class="text-xs text-gray-500 mt-0.5">
-                        {applyEraStyle 
-                            ? "Фото будет стилизовано под эпоху (ч/б, сепия, ретро...)" 
-                            : "Фото сохранит современное качество, изменится только сцена"}
-                    </p>
-                </div>
-                <button
-                    on:click={() => applyEraStyle = !applyEraStyle}
-                    class="flex-shrink-0 p-1"
-                >
-                    {#if applyEraStyle}
-                        <ToggleRight size={36} class="text-violet-400" />
-                    {:else}
-                        <ToggleLeft size={36} class="text-gray-500" />
-                    {/if}
-                </button>
+            <div class="grid gap-2">
+                {#each modes as mode}
+                    {@const ModeIcon = getModeIcon(mode.id)}
+                    <button
+                        on:click={() => selectedMode = mode.id}
+                        class="flex items-center gap-3 p-3 rounded-lg border transition-all text-left
+                               {selectedMode === mode.id 
+                                   ? 'bg-violet-500/20 border-violet-500/50 shadow-lg shadow-violet-500/10' 
+                                   : 'bg-neutral-900/50 border-white/5 hover:border-white/20'}"
+                    >
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
+                                    {selectedMode === mode.id ? 'bg-violet-500/30' : 'bg-neutral-700'}">
+                            <svelte:component this={ModeIcon} size={20} class={selectedMode === mode.id ? 'text-violet-400' : 'text-gray-400'} />
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium {selectedMode === mode.id ? 'text-white' : 'text-gray-300'}">
+                                {mode.name}
+                            </p>
+                            <p class="text-xs {selectedMode === mode.id ? 'text-violet-300' : 'text-gray-500'}">
+                                {mode.desc}
+                            </p>
+                        </div>
+                        {#if selectedMode === mode.id}
+                            <CheckCircle size={20} class="text-violet-400 flex-shrink-0" />
+                        {/if}
+                    </button>
+                {/each}
             </div>
         </div>
 
@@ -406,19 +452,23 @@
                     </div>
                 {:else if currentPhoto.status === "completed" && currentPhoto.result_image_url}
                     <div class="space-y-3">
-                        <!-- Before / After -->
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <p class="text-xs text-gray-500 mb-1 text-center">Оригинал</p>
-                                <img src={resolveImageUrl(currentPhoto.original_image_url)} alt="Original" class="w-full rounded-lg" />
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500 mb-1 text-center">{currentPhoto.target_year} год</p>
-                                <img src={currentPhoto.result_image_url} alt="Result" class="w-full rounded-lg" />
-                            </div>
+                        <!-- Result only -->
+                        <div class="relative">
+                            <p class="text-xs text-gray-500 mb-2 text-center">{currentPhoto.target_year} год</p>
+                            <img src={currentPhoto.result_image_url} alt="Result" class="w-full rounded-xl" />
+                            <!-- Download button -->
+                            <a 
+                                href={currentPhoto.result_image_url} 
+                                download="time-machine-{currentPhoto.target_year}.jpg"
+                                target="_blank"
+                                class="absolute bottom-3 right-3 p-2.5 bg-black/60 hover:bg-black/80 rounded-full transition-colors"
+                                title="Скачать"
+                            >
+                                <Download size={18} class="text-white" />
+                            </a>
                         </div>
                         {#if currentPhoto.style_applied}
-                            <p class="text-xs text-gray-500 text-center">Стиль: {currentPhoto.style_applied}</p>
+                            <p class="text-xs text-gray-500 text-center">Режим: {currentPhoto.style_applied}</p>
                         {/if}
                     </div>
                 {:else if currentPhoto.status === "failed"}
@@ -443,33 +493,32 @@
                             on:click={() => viewPhoto = photo}
                             class="w-full flex items-center gap-3 p-3 bg-neutral-900/50 rounded-lg hover:bg-neutral-700/50 transition-colors text-left"
                         >
-                            <img 
-                                src={resolveImageUrl(photo.original_image_url)} 
-                                alt="" 
-                                class="w-12 h-12 object-cover rounded-lg flex-shrink-0" 
-                            />
+                            {#if photo.result_image_url}
+                                <img 
+                                    src={photo.result_image_url} 
+                                    alt="" 
+                                    class="w-14 h-14 object-cover rounded-lg flex-shrink-0" 
+                                />
+                            {:else}
+                                <div class="w-14 h-14 bg-neutral-700 rounded-lg flex-shrink-0 flex items-center justify-center">
+                                    <svelte:component this={getStatusIcon(photo.status)} size={20} class="{getStatusColor(photo.status)} {photo.status === 'processing' ? 'animate-spin' : ''}" />
+                                </div>
+                            {/if}
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2">
-                                    <span class="font-medium text-white">{photo.target_year}</span>
+                                    <span class="font-medium text-white">{photo.target_year} год</span>
                                     <span class="text-xs {getStatusColor(photo.status)} flex items-center gap-1">
                                         <svelte:component this={getStatusIcon(photo.status)} size={12} />
                                         {getStatusText(photo.status)}
                                     </span>
                                 </div>
                                 <p class="text-xs text-gray-500 truncate">
-                                    {photo.style_applied || (photo.apply_era_style ? "Стиль эпохи" : "Современное качество")}
+                                    {photo.style_applied || getModeLabel(photo.transformation_mode || "full_vintage")}
                                 </p>
                                 <p class="text-xs text-gray-600">
                                     {new Date(photo.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                 </p>
                             </div>
-                            {#if photo.result_image_url}
-                                <img 
-                                    src={photo.result_image_url} 
-                                    alt="" 
-                                    class="w-12 h-12 object-cover rounded-lg flex-shrink-0" 
-                                />
-                            {/if}
                         </button>
                     {/each}
                 </div>
@@ -490,19 +539,15 @@
             <ul class="space-y-2 text-sm text-gray-500">
                 <li class="flex items-center gap-2">
                     <span class="w-1 h-1 bg-violet-400 rounded-full"></span>
-                    Завершайте маршруты — +1 кристалл
+                    Завершите маршрут — +1 кристалл (+2 за сложный)
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1 h-1 bg-violet-400 rounded-full"></span>
-                    Проходите квизы без ошибок — +1 кристалл
+                    Каждые 5 правильных квизов — +1 кристалл
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1 h-1 bg-violet-400 rounded-full"></span>
-                    Ежедневная серия (streak) — +1 кристалл
-                </li>
-                <li class="flex items-center gap-2">
-                    <span class="w-1 h-1 bg-violet-400 rounded-full"></span>
-                    Достижения — до +3 кристаллов
+                    При ошибке генерации кристалл возвращается
                 </li>
             </ul>
         </div>
@@ -530,25 +575,34 @@
             </div>
 
             {#if viewPhoto.status === "completed" && viewPhoto.result_image_url}
-                <div class="space-y-3">
-                    <div>
-                        <p class="text-xs text-gray-500 mb-1">Оригинал</p>
-                        <img src={resolveImageUrl(viewPhoto.original_image_url)} alt="Original" class="w-full rounded-lg" />
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500 mb-1">Результат — {viewPhoto.target_year}</p>
-                        <img src={viewPhoto.result_image_url} alt="Result" class="w-full rounded-lg" />
-                    </div>
+                <div class="relative">
+                    <img src={viewPhoto.result_image_url} alt="Result" class="w-full rounded-xl" />
+                    <a 
+                        href={viewPhoto.result_image_url} 
+                        download="time-machine-{viewPhoto.target_year}.jpg"
+                        target="_blank"
+                        class="absolute bottom-3 right-3 p-2.5 bg-black/60 hover:bg-black/80 rounded-full transition-colors"
+                        title="Скачать"
+                    >
+                        <Download size={18} class="text-white" />
+                    </a>
                 </div>
-            {:else}
-                <img src={resolveImageUrl(viewPhoto.original_image_url)} alt="Original" class="w-full rounded-lg" />
+                <div class="mt-3 text-xs text-gray-500 space-y-1">
+                    <p>Режим: {viewPhoto.style_applied || "—"}</p>
+                </div>
+            {:else if viewPhoto.status === "processing"}
+                <div class="text-center py-12">
+                    <Loader2 size={48} class="mx-auto text-violet-400 animate-spin mb-3" />
+                    <p class="text-gray-400">Генерация в процессе...</p>
+                </div>
+            {:else if viewPhoto.status === "failed"}
+                <div class="text-center py-8">
+                    <XCircle size={48} class="mx-auto text-red-400 mb-3" />
+                    <p class="text-red-400">Ошибка генерации</p>
+                    <p class="text-xs text-gray-500 mt-2">{viewPhoto.error_message || ''}</p>
+                    <p class="text-xs text-green-400 mt-2">Кристалл возвращён</p>
+                </div>
             {/if}
-
-            <div class="mt-3 text-xs text-gray-500 space-y-1">
-                <p>Стиль: {viewPhoto.style_applied || "—"}</p>
-                <p>Статус: {getStatusText(viewPhoto.status)}</p>
-                <p>Стоимость: {viewPhoto.cost} <Gem size={10} class="inline text-violet-400" /></p>
-            </div>
         </div>
     </div>
 {/if}
