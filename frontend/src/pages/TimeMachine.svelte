@@ -332,7 +332,7 @@
                     type="range"
                     bind:value={targetYear}
                     min="1800"
-                    max="2100"
+                    max="2077"
                     step="1"
                     class="w-full h-2 bg-neutral-700 rounded-full appearance-none cursor-pointer
                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
@@ -344,7 +344,7 @@
                     <span>1900</span>
                     <span>1950</span>
                     <span>2000</span>
-                    <span>2030</span>
+                    <span>2077</span>
                 </div>
             </div>
 
